@@ -1,0 +1,8 @@
+{
+  "name": "fluid",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:html": "node tools/build.mjs"
+  }
+}

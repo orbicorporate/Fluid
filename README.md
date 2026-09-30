@@ -16,12 +16,13 @@ Caderno de violão para registrar o que o professor passa em aula e treinar em c
 
 ## Como roda
 
-É um único `index.html`, sem build. Abra no navegador ou publique como site estático (Vercel, Netlify, GitHub Pages).
+- `src/app.html`: o app (a mesma fonte usada no Fluid dentro do Claude).
+- `web.js`: camada web com login (e-mail e senha), cadernos, convite para o professor e o banco no Supabase em tempo real.
+- `index.html`: gerado por `node tools/build.mjs` a partir dos dois acima. É o que a Vercel serve.
+- `config.js`: URL e chave pública (anon) do Supabase.
+- `supabase/migrations/001_fluid.sql`: tabelas, regras de acesso (RLS), convites e tempo real.
+- `api/`: funções da Vercel. `spotify-search` (precisa de `SPOTIFY_CLIENT_ID` e `SPOTIFY_CLIENT_SECRET`), `interpret` (precisa de `ANTHROPIC_API_KEY`) e `config`. As duas primeiras exigem login e usam `SUPABASE_URL` e `SUPABASE_ANON_KEY`.
 
-Dentro do Claude (como Artifact), o app usa recursos da plataforma: banco compartilhado entre aparelhos, busca no Spotify pelo conector e interpretação com IA. Fora do Claude, esses recursos ficam indisponíveis e o app salva tudo no `localStorage` do navegador (só naquele aparelho), escondendo a busca no Spotify e o botão de IA.
+## Cadernos e convites
 
-## Próximos passos
-
-- Trocar o armazenamento local por Supabase (auth + banco) para sincronizar entre aparelhos fora do Claude.
-- Busca no Spotify via Web API com uma função no servidor.
-- Afinador pelo microfone (bloqueado dentro do Claude, possível no site próprio).
+Cada pessoa que cria conta ganha um caderno. O dono gera um link de convite no botão da conta (canto inferior direito) e manda para o professor. O professor cria a conta pelo link e passa a ver e editar o caderno. Um professor pode ter vários alunos e troca de caderno pelo mesmo botão.
