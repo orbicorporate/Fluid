@@ -588,6 +588,12 @@ textarea.inp{height:auto;min-height:92px;padding:12px 14px;resize:vertical;line-
 .riff-codes{display:flex;flex-wrap:wrap;gap:4px;font-size:12.5px;color:var(--muted);align-items:center}
 .riff-codes i{font-style:normal;opacity:.5}
 .riff-codes span.play{color:var(--accentInk);font-weight:700}
+
+.paste-legend{display:flex;flex-wrap:wrap;gap:6px}
+.paste-legend span{display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;border-radius:12px;background:var(--glass2);border:1px solid var(--glassEdgeSoft);font-size:12px;color:var(--muted)}
+.paste-legend b{padding:2px 7px;border-radius:7px;background:var(--glowSoft);color:var(--accentInk);font-size:12px;font-weight:600}
+.notes-field .inp{min-height:96px}
+.tab-t small{font-size:9.5px;color:var(--faint);font-weight:600}
 </style>
 
 <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -679,8 +685,10 @@ const NOTE_RE = /^([1-6])(\d{1,2})([↑↓^vVhHpPbB\/\\~*]*)$/;
 const TECH_MAP = {'^':'↑','v':'↓','V':'↓'};
 function parseNoteTok(t){ const m = t.match(NOTE_RE); if (!m) return null; const f = +m[2]; if (f>22) return null; return {s:+m[1], f, t:(m[3]||'').split('').map(c=>TECH_MAP[c]||c).join('')}; }
 function parseRiffText(line){
-  const toks = line.replace(/[·•∙|,;.]+/g,' ').replace(/\s*-\s*/g,' ').trim().split(/\s+/).filter(Boolean);
-  if (toks.length < 2) return null; const notes = toks.map(parseNoteTok); if (notes.some(n=>!n)) return null; return notes;
+  const toks = line.replace(/[-–—_]{2,}/g,' _ ').replace(/[·•∙|,;.]+/g,' ').replace(/\s*-\s*/g,' ').trim().split(/\s+/).filter(Boolean);
+  if (toks.filter(t=>t!=='_').length < 2) return null;
+  const notes = toks.map(t => t==='_' ? {rest:true} : parseNoteTok(t)); if (notes.some(n=>!n)) return null;
+  while (notes.length && notes[0].rest) notes.shift(); return notes;
 }
 function parseStrumText(line){
   const l = line.replace(/[·•∙|,]/g,' ').replace(/[xX×]/g,'x').trim();
@@ -690,24 +698,28 @@ function parseStrumText(line){
     if (c.length===1) out.push(...(c[0]==='U'?['','U']:[c[0],''])); else { if (c.length%2 && c[0]==='U') out.push(''); out.push(...c); if (out.length%2) out.push(''); } });
   return out.length ? out : null;
 }
-const riffToText = r => (r.label?r.label+': ':'') + (r.notes||[]).map(n=>''+n.s+n.f+(n.t||'')).join(' ');
+const riffToText = r => (r.label?r.label+': ':'') + (r.notes||[]).map(n=>n.rest?'--':''+n.s+n.f+(n.t||'')).join(' ');
 function parseMessage(txt){
   const out = {chords:[], riffs:[], extra:[]};
   const url = txt.match(/https?:\/\/\S+/); if (url) out.link = url[0].replace(/[)\].,]+$/,'');
   const capo = txt.match(/capo(?:traste)?\s*(?:na\s*|casa\s*|:\s*)?(\d{1,2})/i); if (capo) out.capo = +capo[1];
   const bpm = txt.match(/(\d{2,3})\s*bpm/i); if (bpm) out.bpm = +bpm[1];
-  let pendingLabel = '';
+  let pendingLabel = '', groupLabel = '', groupCount = 0;
   txt.split(/\n/).forEach(line => {
-    let l = line.trim(); if (!l || /https?:/.test(l)) return;
+    let l = line.trim(); if (!l){ groupLabel=''; groupCount=0; return; } if (/https?:/.test(l)) return;
     l = l.replace(/capo(?:traste)?\s*(?:na\s*|casa\s*|:\s*)?\d{1,2}ª?/ig,'').replace(/\d{2,3}\s*bpm/ig,'').trim(); if (!l || /^[\s\-–—:·,.;|]*$/.test(l)) return;
     let label = ''; const lm = l.match(/^([^\d↓↑:]{2,24}):\s*(.+)$/); if (lm){ label = lm[1].trim(); l = lm[2].trim(); }
     const st = parseStrumText(l); if (st){ out.strum = st; pendingLabel=''; return; }
     if (/^[\d\s\-]+$/.test(l) && /\d{2}-\d/.test(l) && !/\s/.test(l.replace(/\s*-\s*/g,'-'))){ const c = parseCode(l); if (c){ out.chords.push(c); pendingLabel=''; return; } }
-    const rf = parseRiffText(l); if (rf){ out.riffs.push({label: label || pendingLabel || '', notes: rf}); pendingLabel=''; return; }
+    const rf = parseRiffText(l); if (rf){
+      if (label || pendingLabel){ groupLabel = label || pendingLabel; groupCount = 0; }
+      groupCount++;
+      const lab = groupLabel ? groupLabel + (groupCount>1 ? ' · parte '+groupCount : '') : '';
+      out.riffs.push({label: lab, notes: rf}); pendingLabel=''; return; }
     if (/^[\d\s\-]+$/.test(l) && /\d{2}/.test(l)){ const c = parseCode(l); if (c){ out.chords.push(c); return; } }
     const names = l.split(/[\s|,]+/).filter(Boolean);
     if (names.length && names.every(n => /^[A-Ga-g][#b]?(m|maj7|m7|7|sus2|sus4|dim|add9|6|m6|5)?$/.test(n))){ names.forEach(n => { const c = chordFromName(n); out.chords.push(c || {pos:[],mute:[],open:[],name:normName(n)}); }); return; }
-    if (l.length <= 24 && !/\d{2}/.test(l)) { pendingLabel = l.replace(/[:\-]+$/,'').trim(); return; }
+    if (l.length <= 24 && !/\d{2}/.test(l) && !/\s\S+\s\S+\s\S+/.test(l)) { pendingLabel = l.replace(/[:\-]+$/,'').trim(); return; }
     out.extra.push(line.trim());
   });
   return out;
@@ -1129,12 +1141,12 @@ function riffsSection(s){
   return `<section><div class="sec-h"><h3>Dedilhado</h3><span class="hint">tablatura: linha de cima = corda 1 (mi agudo)</span></div>
     ${rs.map((r,ri)=>{ const N = r.notes.length;
       const cells = []; 
-      cells.push('<span class="tab-l"></span>'); r.notes.forEach((n,ci)=>cells.push(`<span class="tab-t" data-col="${ri}:${ci}">${esc(n.t||'')}</span>`));
+      cells.push('<span class="tab-l"></span>'); r.notes.forEach((n,ci)=>cells.push(`<span class="tab-t" data-col="${ri}:${ci}">${n.rest?'<small>pausa</small>':esc(n.t||'')}</span>`));
       for (let st=1; st<=6; st++){ cells.push(`<span class="tab-l">${SNAME[st]}</span>`); r.notes.forEach((n,ci)=>cells.push(`<span class="tab-c${n.s===st?' on':''}" data-col="${ri}:${ci}">${n.s===st?`<b>${n.f}</b>`:''}</span>`)); }
       return `<div class="riff">
         <div class="riff-h"><b>${esc(r.label||('Dedilhado '+(rs.length>1?ri+1:'')).trim())}</b><button class="hear" data-riff="${ri}" aria-label="Ouvir o dedilhado">${I.speaker}Ouvir</button></div>
         <div class="tab-wrap"><div class="tab" style="grid-template-columns:22px repeat(${N}, minmax(30px,1fr))" role="img" aria-label="Tablatura com ${N} notas">${cells.join('')}</div></div>
-        <div class="riff-codes mono">${r.notes.map((n,ci)=>`<span data-col="${ri}:${ci}">${n.s}${n.f}${esc(n.t||'')}</span>`).join('<i>·</i>')}</div>
+        <div class="riff-codes mono">${r.notes.map((n,ci)=>`<span data-col="${ri}:${ci}">${n.rest?'—':n.s+''+n.f+esc(n.t||'')}</span>`).join('<i>·</i>')}</div>
       </div>`; }).join('')}
   </section>`;
 }
@@ -1143,7 +1155,7 @@ function playRiff(s, ri){
   riffTimers.forEach(clearTimeout); riffTimers = [];
   const r = (s.riffs||[]).filter(r=>r.notes&&r.notes.length)[ri]; if (!r) return;
   try { const ctx = actx(); const step = 60/(s.bpm||80)/2; const t0 = ctx.currentTime + .05; const capo = s.capo||0;
-    r.notes.forEach((n,i) => { pluck(OPEN[n.s]+n.f+capo, t0+i*step, .26, 1.6);
+    r.notes.forEach((n,i) => { if (!n.rest) pluck(OPEN[n.s]+n.f+capo, t0+i*step, .26, 1.6);
       riffTimers.push(setTimeout(() => { layer.querySelectorAll('[data-col].play').forEach(x=>x.classList.remove('play')); layer.querySelectorAll(`[data-col="${ri}:${i}"]`).forEach(x=>x.classList.add('play')); }, (i*step+.05)*1000)); });
     riffTimers.push(setTimeout(() => layer.querySelectorAll('[data-col].play').forEach(x=>x.classList.remove('play')), (r.notes.length*step+.4)*1000));
   } catch(e){ toast('O som não está disponível neste navegador.'); }
@@ -1208,13 +1220,13 @@ function songSheet(s){
             ${n && n!=='?' ? `<button class="know${isMastered(n)?' on':''}" data-know="${esc(n)}" aria-pressed="${isMastered(n)}">${isMastered(n)?'Já sei':'Marcar que sei'}</button>`:''}
           </div>`; }).join('')}</div>` : `<div class="empty"><p>Nenhum acorde ainda. Toque em Editar para marcar no braço.</p></div>`}
       </section>
+      ${s.notes ? `<section><div class="sec-h"><h3>Notas e observações</h3></div><div class="notes-box">${esc(s.notes)}</div></section>`:''}
       <section>
         <div class="sec-h"><h3>Batida</h3>${hasStrum?`<span class="hint">↓ baixo · ↑ cima · × abafado</span>`:''}</div>
         ${hasStrum ? `<div class="strum">${strum.map((x,i)=>`<span class="sl ${x?'':'rest'} ${labels[i].match(/\d/)?'beat':''}">${GLYPH[x]}<small>${labels[i]}</small></span>`).join('')}</div>` : `<p class="hint">Sem batida marcada.</p>`}
       </section>
       ${riffsSection(s)}
       ${lyricsSection(s)}
-      ${s.notes ? `<section><div class="sec-h"><h3>Anotações</h3></div><div class="notes-box">${esc(s.notes)}</div></section>`:''}
       <section>
         ${view.confirmDel ? `<div class="confirm">Apagar "${esc(s.title||'esta música')}"? Não dá para desfazer.<span style="flex:1"></span><button class="btn ghost" data-act="del-no">Cancelar</button><button class="btn danger" data-act="del-yes">${I.trash}Apagar</button></div>` : `<button class="btn ghost danger" data-act="del">${I.trash}Apagar música</button>`}
       </section>
@@ -1310,10 +1322,15 @@ function renderEditor(){
       </div>` : ''}
       <div class="paste">
         <div class="row" style="justify-content:space-between"><h3>Colar mensagem do professor</h3>${!ed.showPaste?`<button type="button" class="btn ghost" data-act="toggle-paste" style="height:34px">Abrir</button>`:''}</div>
+        <p class="hint" style="margin:0">Cole aqui o que ele mandou, do jeito que chegou. O Fluid separa sozinho e preenche os campos abaixo:</p>
+        <div class="paste-legend"><span><b class="mono">21-42-32</b>acorde (notas juntas)</span><span><b class="mono">41 - 42 - 44</b>dedilhado (uma de cada vez)</span><span><b class="mono">----</b>pausa</span><span><b>Frase 1</b>nome da parte</span><span><b>Capo 2 · 90 bpm</b>capotraste e andamento</span><span><b>↓ ↓↑ ↑↓↑</b>batida</span></div>
+        <p class="hint" style="margin:0">O que não for música vai para Notas e observações.</p>
         ${ed.showPaste ? `<textarea class="inp" id="ed-paste" rows="6" placeholder="https://open.spotify.com/track/...&#10;Capotraste 2&#10;&#10;42-52&#10;21-42-32&#10;Intro: 60·60·45↑·42">${esc(ed.pasteText||'')}</textarea>
         <div class="row"><button type="button" class="btn primary" data-act="do-paste">Preencher tudo</button>${sampleFn?`<button type="button" class="btn" data-act="ai-paste" ${ed.aiBusy?'disabled':''}>${I.spark}${ed.aiBusy?'Interpretando…':'Interpretar com IA'}</button>`:''}</div>
         <p class="hint${ed.pasteMsg&&/^(Entendi|A IA entendeu)/.test(ed.pasteMsg)?' ok':''}" id="paste-msg" style="margin:0">${esc(ed.pasteMsg || 'Acordes (21-42-32), dedilhados (60·45↑·42), batida (↓ ↓↑ ↑↓↑), capo, bpm e link.')}</p>` : `<p class="hint" style="margin:0">Cole o link e os números do jeito que ele manda no WhatsApp.</p>`}
       </div>
+
+      <div class="field notes-field"><label for="ed-notes">Notas e observações</label><textarea class="inp" id="ed-notes" rows="4" placeholder="Ex.: dedilhado só com o polegar nas cordas graves, repetir a Frase 1 duas vezes, segurar o capo firme">${esc(s.notes)}</textarea><span class="hint">Aparece na página da música, logo abaixo da sequência.</span></div>
 
       <div class="grid2">
         <div class="field"><label for="ed-title">Nome da música</label><input class="inp" id="ed-title" value="${esc(s.title)}" placeholder="Ex.: Nai Aunua Shabu"></div>
@@ -1379,7 +1396,6 @@ function renderEditor(){
         <div class="row" style="gap:8px"><a class="linkbtn sp-search" href="${lyricSearch(s,'letras')}" target="_blank" rel="noopener"><i class="other">${I.search}</i><span>Procurar no Letras</span></a><a class="linkbtn sp-search" href="${lyricSearch(s,'cifra')}" target="_blank" rel="noopener"><i class="other">${I.search}</i><span>Cifra Club</span></a></div>
         <textarea class="inp" id="ed-lyrics" rows="8" placeholder="Cole ou digite a letra aqui, uma linha por verso">${esc(s.lyrics||'')}</textarea>
         <span class="hint">Depois de salvar, abra a música e toque em Marcar acordes para colocar cada acorde em cima da palavra.</span></div>
-      <div class="field"><label for="ed-notes">Anotações da aula</label><textarea class="inp" id="ed-notes" rows="3" placeholder="Ex.: dedilhado na introdução, repetir refrão 2x">${esc(s.notes)}</textarea></div>
     </form>
 
   </aside>`;
@@ -1472,7 +1488,8 @@ function applyParsed(p, source){
   if (p.capo!=null){ ed.s.capo = p.capo; got.push(p.capo ? 'capo '+p.capo : 'sem capo'); }
   if (p.bpm){ ed.s.bpm = p.bpm; got.push(p.bpm+' bpm'); }
   if (p.chords && p.chords.length){ ed.s.chords = p.chords; got.push(p.chords.length+(p.chords.length===1?' acorde: ':' acordes: ')+p.chords.map(detect).join(' ')); }
-  if (p.riffs && p.riffs.length){ ed.s.riffs = p.riffs; got.push(p.riffs.length===1 ? 'dedilhado com '+p.riffs[0].notes.length+' notas' : p.riffs.length+' dedilhados'); }
+  if (p.riffs && p.riffs.length){ ed.s.riffs = p.riffs; got.push(p.riffs.map((r,i)=>(r.label||('dedilhado '+(i+1)))+' ('+r.notes.filter(n=>!n.rest).length+' notas'+(r.notes.some(n=>n.rest)?', com pausa':'')+')').join(', ')); }
+  if (p.extra && p.extra.length && source!=='ai'){ ed.s.notes = [ed.s.notes, ...p.extra].filter(Boolean).join('\n'); got.push('texto enviado para Notas e observações'); }
   if (p.strum){ ed.s.strum = p.strum.slice(0, (METERS[ed.s.meter||'4/4']||METERS['4/4']).slots); got.push('batida'); }
   if (p.title && !ed.s.title){ ed.s.title = p.title; got.push('nome'); }
   if (p.notes){ ed.s.notes = (ed.s.notes ? ed.s.notes+'\n' : '') + p.notes; got.push('anotações'); }
