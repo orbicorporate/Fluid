@@ -727,6 +727,16 @@ body{background-attachment:fixed}
 .brand-ico.fl{filter:drop-shadow(0 6px 14px rgba(47,207,156,.35))}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fl .fl-d{display:inline}:root:not([data-theme="light"]) .fl .fl-l{display:none}:root:not([data-theme="light"]) .brand-ico.fl{filter:drop-shadow(0 6px 14px rgba(240,106,26,.35))}}
 :root[data-theme="dark"] .fl .fl-d{display:inline}:root[data-theme="dark"] .fl .fl-l{display:none}:root[data-theme="dark"] .brand-ico.fl{filter:drop-shadow(0 6px 14px rgba(240,106,26,.35))}
+
+/* músicas na órbita: esferas pequenas de metal fosco */
+.sat .s-song{width:30px;height:30px;font-size:9px;letter-spacing:.02em;border:0;color:rgba(255,255,255,.92);text-shadow:0 1px 1px rgba(0,0,0,.25);
+  background:radial-gradient(circle at 34% 28%,color-mix(in srgb,var(--sc) 35%,#fff) 0%,color-mix(in srgb,var(--sc) 80%,#fff) 22%,var(--sc) 48%,color-mix(in srgb,var(--sc) 62%,#000) 100%);
+  box-shadow:inset 0 -3px 6px rgba(0,0,0,.28),inset 0 2px 3px rgba(255,255,255,.35),0 5px 12px -3px color-mix(in srgb,var(--sc) 55%,transparent),0 1px 2px rgba(0,0,0,.15);position:relative;overflow:hidden}
+.sat .s-song::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 200deg,rgba(255,255,255,0),rgba(255,255,255,.18) 15%,rgba(255,255,255,0) 30%,rgba(0,0,0,.08) 55%,rgba(255,255,255,0) 70%,rgba(255,255,255,.14) 85%,rgba(255,255,255,0));mix-blend-mode:soft-light;pointer-events:none}
+.sat .s-song::after{content:"";position:absolute;left:18%;top:10%;width:46%;height:30%;border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.45),rgba(255,255,255,0));filter:blur(1.5px);pointer-events:none}
+.sat .s-song.ready{box-shadow:0 0 0 2px var(--ok),inset 0 -3px 6px rgba(0,0,0,.28),inset 0 2px 3px rgba(255,255,255,.35),0 5px 12px -3px color-mix(in srgb,var(--sc) 55%,transparent)}
+.sat:hover .s-song,.sat:focus-visible .s-song{transform:scale(1.35)}
+@media (max-width:520px){.sat .s-song{width:28px;height:28px;font-size:8.5px}}
 </style>
 
 <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -1179,7 +1189,7 @@ function render(){
     ${songs.length ? `<button class="core${view.readyFilter?' on':''}" data-act="ready" aria-pressed="${view.readyFilter}" aria-label="${ready} de ${songs.length} músicas prontas para tocar. Toque para filtrar">
       <strong>${ready}<em>/${songs.length}</em></strong><small>${ready===1?'música pronta':'músicas prontas'}<br>para tocar</small></button>`
     : `<button class="core" data-act="paste" aria-label="Colar mensagem do professor"><strong>0</strong><small>músicas<br>ainda</small></button>`}
-    ${songs.map((s,i)=>`<button class="sat" data-orb="song" data-i="${i}" data-open="${esc(s.id)}" aria-label="Abrir ${esc(s.title||'música')}" title="${esc(s.title||'Sem título')}"><span class="s-song${isReady(s)?' ready':''}" style="background:${hueOf(s)}">${esc(initials(s.title))}</span></button>`).join('')}
+    ${songs.map((s,i)=>`<button class="sat" data-orb="song" data-i="${i}" data-open="${esc(s.id)}" aria-label="Abrir ${esc(s.title||'música')}" title="${esc(s.title||'Sem título')}"><span class="s-song${isReady(s)?' ready':''}" style="--sc:${hueOf(s)}">${esc(initials(s.title))}</span></button>`).join('')}
     ${learning.map((c,i)=>chordSat(c,i,'learn',count)).join('')}
     ${known.map((c,i)=>chordSat(c,i,'known',count)).join('')}
     ${songs.length ? `<div class="orbit-legend" aria-hidden="true"><span><i class="k"></i>já sei</span><span><i class="c"></i>acordes para aprender</span><span><i></i>suas músicas</span></div>`:''}
