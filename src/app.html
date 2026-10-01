@@ -981,7 +981,8 @@ function setMastered(n, on){
   progress = {...progress, mastered:[...set]}; saveMeta('progress'); render();
   toast(on ? n+' foi para o anel de dentro' : n+' voltou para aprendendo');
 }
-const songNames = s => (s.chords||[]).map(detect).filter(n=>n && n!=='?');
+const isRealChord = c => !!c && ((c.pos||[]).length + (c.open||[]).length >= 2 || (!!c.name && !(c.pos||[]).length));
+const songNames = s => (s.chords||[]).filter(isRealChord).map(detect).filter(n=>n && n!=='?');
 const isReady = s => { const n = songNames(s); return n.length>0 && n.every(isMastered); };
 const TAGC = ['#DB2777','#7C3AED','#0284C7','#059669','#EA580C','#CA8A04','#4F46E5','#0D9488','#E11D48','#65A30D'];
 const tagColor = t => { const i = allTags().indexOf(t); return TAGC[(i<0 ? [...t].reduce((a,c)=>a+c.charCodeAt(0),0) : i) % TAGC.length]; };
@@ -1030,7 +1031,7 @@ const codeFor = {}, shapeFor = {};
 const label = c => { const n = detect(c); return view.display==='num' ? (codeOf(c) || n) : n; };
 function chordStats(){
   const count = {};
-  songs.forEach(s => { const seen = new Set(); (s.chords||[]).forEach(c => { const n = detect(c); if(!n || n==='?' || seen.has(n)) return; seen.add(n); count[n]=(count[n]||0)+1; if(!shapeFor[n] && (c.pos||[]).length){ shapeFor[n]=c; codeFor[n]=codeOf(c); } }); });
+  songs.forEach(s => { const seen = new Set(); (s.chords||[]).filter(isRealChord).forEach(c => { const n = detect(c); if(!n || n==='?' || seen.has(n)) return; seen.add(n); count[n]=(count[n]||0)+1; if(!shapeFor[n] && (c.pos||[]).length){ shapeFor[n]=c; codeFor[n]=codeOf(c); } }); });
   const names = Object.keys(count).sort((a,b)=>count[b]-count[a]||a.localeCompare(b)).slice(0,18);
   return {count, names};
 }
