@@ -765,6 +765,32 @@ body{background-attachment:fixed}
 @keyframes flDrift2{0%,100%{transform:translateX(0)}50%{transform:translateX(-3.5px)}}
 .fl .fl-l .fl-shine{animation-duration:2.4s}
 .brand-ico.fl .fl-l path{transition:none}
+
+/* ---- metrônomo livre ---- */
+.metro{position:relative;margin-block:14px;padding:16px 18px 18px;border-radius:24px;background-color:var(--glass);background-image:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,0) 60%);border:1px solid var(--glassEdgeSoft);border-top-color:var(--glassEdge);box-shadow:var(--glassHi),var(--glassDrop);-webkit-backdrop-filter:var(--blurG);backdrop-filter:var(--blurG);display:flex;flex-direction:column;gap:12px}
+.metro-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.metro-t{display:flex;align-items:center;gap:10px}
+.metro-t b{display:block;font-family:var(--fDisplay);font-size:15px}
+.metro-t small{display:block;font-size:12px;color:var(--muted)}
+.metro-play{width:52px;height:52px;border-radius:50%;border:0;padding:0;display:flex;align-items:center;justify-content:center;color:var(--onAccent);background:var(--accent);background-image:linear-gradient(180deg,rgba(255,255,255,.25),rgba(255,255,255,0) 60%);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 10px 24px -8px var(--glow);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.metro-play:hover{transform:scale(1.05)}
+.metro-play svg{width:22px;height:22px}
+.metro-play.on{animation:mPulse 1s ease-in-out infinite}
+@keyframes mPulse{50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 0 8px var(--glowSoft),0 10px 24px -8px var(--glow)}}
+.metro-mid{display:flex;align-items:center;justify-content:center;gap:18px}
+.metro-step{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid var(--glassEdgeSoft);background:var(--glass2);color:var(--text)}
+.metro-step svg{width:18px;height:18px}
+.metro-bpm{text-align:center;min-width:120px}
+.metro-bpm strong{display:block;font-family:var(--fDisplay);font-size:44px;font-weight:600;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.metro-bpm small{font-size:12.5px;color:var(--muted)}
+.metro-range{width:100%;accent-color:var(--accent);height:28px}
+.metro-dots{display:flex;justify-content:center;gap:12px;min-height:16px}
+.metro-dots i{width:12px;height:12px;border-radius:50%;background:var(--lineStrong);transition:transform .08s ease,background .08s ease}
+.metro-dots i.one{width:14px;height:14px;margin-top:-1px}
+.metro-dots i.on{background:var(--accent);transform:scale(1.35);box-shadow:0 0 0 5px var(--glowSoft)}
+.metro-dots i.one.on{background:var(--ok)}
+.metro-bot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.metro-bot .seg button{min-width:44px}
 </style>
 
 <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -1223,6 +1249,7 @@ function render(){
     ${songs.length ? `<div class="orbit-legend" aria-hidden="true"><span><i class="k"></i>já sei</span><span><i class="c"></i>acordes para aprender</span><span><i></i>suas músicas</span></div>`:''}
   </section>
   ${songs.length && !known.length ? `<p class="orbit-tip">Toque num acorde para ver como montar e em quais músicas ele aparece. Quando marcar que já sabe, ele vai para o anel de dentro.</p>`:''}
+  ${metroHTML()}
   ${importHTML()}
   <div class="bar">
     <label class="search">${I.search}<input id="q" type="search" placeholder="Filtrar o caderno: música, acorde ou pastilha" value="${esc(view.q)}" aria-label="Buscar"></label>
@@ -1888,7 +1915,65 @@ Mensagem:
 }
 
 /* ---------- practice mode: metronome + chord follow ---------- */
+
+/* ---------- metrônomo livre (home) ---------- */
+const metro = { bpm: 80, beats: 4, playing:false, beat:-1, taps:[] };
+try { const m = JSON.parse(localStorage.getItem('fluid.metro')||'null'); if (m){ if (m.bpm>=30&&m.bpm<=240) metro.bpm = m.bpm; if ([2,3,4,6].includes(m.beats)) metro.beats = m.beats; } } catch(e){}
+const metroSave = () => { try { localStorage.setItem('fluid.metro', JSON.stringify({bpm:metro.bpm, beats:metro.beats})); } catch(e){} };
+const tempoName = b => b<60?'Bem lento':b<76?'Lento':b<108?'Moderado':b<132?'Animado':b<168?'Rápido':'Muito rápido';
+function metroHTML(){
+  return `<section class="metro" id="metro" aria-label="Metrônomo">
+    <div class="metro-top"><div class="metro-t"><span class="ph-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l4 18H5L9 3Z"/><path d="M12 15l5-8"/></svg></span><span><b>Metrônomo</b><small>Treino livre, sem música</small></span></div>
+      <button class="metro-play${metro.playing?' on':''}" data-act="metro-play" aria-label="${metro.playing?'Parar':'Tocar'} metrônomo">${metro.playing?I.pause:I.play}</button></div>
+    <div class="metro-mid">
+      <button class="metro-step" data-act="metro-minus" aria-label="Diminuir 1 bpm">${I.minus}</button>
+      <div class="metro-bpm"><strong id="metro-n">${metro.bpm}</strong><small><span>bpm</span> · <span id="metro-name">${tempoName(metro.bpm)}</span></small></div>
+      <button class="metro-step" data-act="metro-plus" aria-label="Aumentar 1 bpm">${I.plus}</button>
+    </div>
+    <input type="range" class="metro-range" id="metro-bpm" min="30" max="240" step="1" value="${metro.bpm}" aria-label="Andamento em bpm">
+    <div class="metro-dots" id="metro-dots" aria-hidden="true">${Array.from({length:metro.beats},(_,i)=>`<i class="${i===0?'one':''}${i===metro.beat?' on':''}"></i>`).join('')}</div>
+    <div class="metro-bot">
+      <div class="seg" role="group" aria-label="Tempos por compasso">${[2,3,4,6].map(n=>`<button data-mbeats="${n}" aria-pressed="${metro.beats===n}">${n===6?'6/8':n+'/4'}</button>`).join('')}</div>
+      <button class="btn" data-act="metro-tap" aria-label="Bater o andamento">Bater tempo</button>
+    </div>
+  </section>`;
+}
+function metroSync(){
+  const n = document.getElementById('metro-n'); if (n) n.textContent = metro.bpm;
+  const nm = document.getElementById('metro-name'); if (nm) nm.textContent = tempoName(metro.bpm);
+  const r = document.getElementById('metro-bpm'); if (r && +r.value !== metro.bpm) r.value = metro.bpm;
+}
+function metroDots(){ const d = document.getElementById('metro-dots'); if (!d) return; [...d.children].forEach((el,i)=>el.classList.toggle('on', i===metro.beat)); }
+function metroSet(b){ metro.bpm = Math.max(30, Math.min(240, Math.round(b))); metroSave(); metroSync(); }
+function metroClick(ctx, time, accent){
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.frequency.value = accent ? 1760 : 1100; o.type = 'sine';
+  g.gain.setValueAtTime(accent ? .55 : .35, time); g.gain.exponentialRampToValueAtTime(.0001, time + .05);
+  o.connect(g).connect(ctx.destination); o.start(time); o.stop(time + .06);
+}
+function metroStart(){
+  if (typeof practice !== 'undefined' && practice && practice.playing) stopMetro();
+  let ctx; try { ctx = actx(); } catch(e){ toast('O som não está disponível neste navegador.'); return; }
+  metro.playing = true; metro.n = 0; metro.next = ctx.currentTime + .08; metro.queue = [];
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l=>metro.lock=l).catch(()=>{}); } catch(e){}
+  const per = () => metro.beats===6 ? 60/metro.bpm/2 : 60/metro.bpm;
+  metro.timer = setInterval(() => {
+    while (metro.next < ctx.currentTime + .12){ const b = metro.n % metro.beats; metroClick(ctx, metro.next, b===0); metro.queue.push({t:metro.next, b}); metro.next += per(); metro.n++; }
+  }, 25);
+  const draw = () => { if (!metro.playing) return; const now = ctx.currentTime; let ch = false;
+    while (metro.queue.length && metro.queue[0].t <= now){ metro.beat = metro.queue.shift().b; ch = true; }
+    if (ch) metroDots(); metro.raf = requestAnimationFrame(draw); };
+  metro.raf = requestAnimationFrame(draw);
+  metroUI();
+}
+function metroStop(){ metro.playing = false; clearInterval(metro.timer); cancelAnimationFrame(metro.raf); metro.beat = -1; try { metro.lock && metro.lock.release(); } catch(e){} metroUI(); }
+function metroUI(){ const el = document.getElementById('metro'); if (el) el.outerHTML = metroHTML(); }
+function metroTap(){
+  const t = performance.now(); metro.taps = metro.taps.filter(x => t - x < 2500); metro.taps.push(t);
+  if (metro.taps.length >= 2){ const d = []; for (let i=1;i<metro.taps.length;i++) d.push(metro.taps[i]-metro.taps[i-1]); metroSet(60000 / (d.reduce((a,b)=>a+b,0)/d.length)); }
+}
 function openPractice(s){
+  if (metro.playing) metroStop();
   const meter = s.meter||'4/4'; const M = METERS[meter]||METERS['4/4'];
   practice = {s, meter, M, bpm: s.bpm || 80, bpc: 1, guide:true, ptr:-1, lastCi:-1, playing:false, slot:-1, bar:0, ctx:null, timer:0, next:0, n:0, queue:[], raf:0, lock:null};
   renderPractice();
@@ -2393,12 +2478,14 @@ function renderTreino(){
 }
 
 /* ---------- global wiring ---------- */
+app.addEventListener('input', e => { if (e.target.id==='metro-bpm') metroSet(+e.target.value); });
 app.addEventListener('keydown', e => { if (e.target.id==='q-new' && e.key==='Enter'){ e.preventDefault(); addQuestion(); } });
 app.addEventListener('click', e => {
-  const t = e.target.closest('[data-act],[data-open],[data-pop],[data-disp],[data-tag],[data-tagdel],[data-tab],[data-lesson],[data-tcheck],[data-pair],[data-tune],[data-trsong],[data-imp]'); if (!t) return;
+  const t = e.target.closest('[data-mbeats],[data-act],[data-open],[data-pop],[data-disp],[data-tag],[data-tagdel],[data-tab],[data-lesson],[data-tcheck],[data-pair],[data-tune],[data-trsong],[data-imp]'); if (!t) return;
   if (t.dataset.imp!=null){ importTrack(+t.dataset.imp); return; }
   if (t.dataset.tab){ setTab(t.dataset.tab); render(); return; }
   if (t.dataset.lesson){ openLesson(lessons.find(l=>l.id===t.dataset.lesson)); return; }
+  if (t.dataset.mbeats){ metro.beats = +t.dataset.mbeats; metro.n = 0; metroSave(); metroUI(); return; }
   if (t.dataset.tcheck){ const [id,list,i] = t.dataset.tcheck.split(':'); toggleItem(id, list, +i); toast(list==='homework'?'Lição marcada como feita':'Dúvida marcada como respondida'); return; }
   if (t.dataset.pair){ const [a,b] = t.dataset.pair.split('|'); openTrainer(a,b); return; }
   if (t.dataset.trsong){ view.trSong = t.dataset.trsong; render(); return; }
@@ -2424,6 +2511,10 @@ app.addEventListener('click', e => {
   if (a==='new') openEditor(null);
   if (a==='theme') return toggleTheme();
   if (a==='q-add') return addQuestion();
+  if (a==='metro-play') return metro.playing ? metroStop() : metroStart();
+  if (a==='metro-minus') return metroSet(metro.bpm-1);
+  if (a==='metro-plus') return metroSet(metro.bpm+1);
+  if (a==='metro-tap') return metroTap();
   if (a==='paste') openEditor(null, {paste:true});
   if (a==='clear-filter'){ view.chordFilter=null; render(); }
   if (a==='focus-list'){ const l=document.getElementById('list'); l && l.scrollIntoView({behavior:'smooth',block:'start'}); }
