@@ -587,6 +587,13 @@ textarea.inp{height:auto;min-height:92px;padding:12px 14px;resize:vertical;line-
 .paste-legend b{padding:2px 7px;border-radius:7px;background:var(--glowSoft);color:var(--accentInk);font-size:12px;font-weight:600}
 .notes-field .inp{min-height:96px}
 .tab-t small{font-size:9.5px;color:var(--faint);font-weight:600}
+
+.ly-sec{font-family:var(--fDisplay);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accentInk);margin:12px 6px 2px}
+.ly-sec:first-child{margin-top:0}
+.ly-sum{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:var(--okBg);color:var(--ok);font-size:13.5px;font-weight:500}
+.ly-sum span{flex:1;min-width:160px}
+.ly-sum .btn{height:34px;color:var(--text)}
+#ed-lyrics{font-family:var(--fMono);font-size:13px;line-height:1.5;white-space:pre;overflow-x:auto}
 </style>
 
 <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -1089,7 +1096,80 @@ function startOrbit(){
 
 /* ---------- lyrics with chords ---------- */
 const lyricLines = s => (s.lyrics||'').replace(/\r/g,'').split('\n');
-const lyricSearch = (s, site) => { const q = encodeURIComponent([s.title,s.artist].filter(Boolean).join(' ')); return site==='cifra' ? 'https://www.cifraclub.com.br/?q='+q : 'https://www.letras.mus.br/?q='+q; };
+const lyricSearch = (s, kind) => {
+  const t = (s.title||'').trim(), a = (s.artist||'').trim();
+  const q = kind==='artist' ? `${a||t} letras músicas` : `"${t}" ${a} letra (site:letras.mus.br OR site:cifraclub.com.br OR site:youtube.com)`;
+  return 'https://www.google.com/search?q=' + encodeURIComponent(q.trim());
+};
+
+/* ---------- pasted lyrics / cifra: clean up and place chords over words ---------- */
+const CH_TOK = /^\(?[A-G](?:#|b)?(?:maj|min|dim|aug|sus|add|m|M|°|º|\+)?\d*(?:M|maj)?\d*(?:\([#b+\-]?\d+(?:[\/,][#b+\-]?\d+)*\))?(?:sus\d*|add\d+)?(?:\/[A-G](?:#|b)?)?\)?$/;
+const SEP_TOK = /^(\||\/|-|%|\d+x|x\d+|\(\d+x\)|\(x\d+\))$/i;
+const JUNK = /^(tom|afinação|afinacao|composição|composicao|composição de|cifra|letra|enviado por|colaboração|colaboracao|revisões|revisoes|exibir|simplificar|tablatura|acordes|versão|versao|ver mais|ouça|ouca|seguir|compartilhar|imprimir|parte \d+ de \d+|\d+ exibições|\d+ exibicoes)\b/i;
+const TAB_LINE = /^\s*[eBGDAEb]\s*[|:]\s*[-\d|hpbr\/\\~x()]{3,}/;
+function isChordLine(l){
+  const toks = l.trim().split(/\s+/).filter(Boolean); if (!toks.length) return false;
+  const ch = toks.filter(t => CH_TOK.test(t)), rest = toks.filter(t => !CH_TOK.test(t) && !SEP_TOK.test(t));
+  if (rest.length || !ch.length) return false;
+  if (ch.every(t => /^[AE]$/.test(t)) && toks.length===1) return false; // "A" ou "E" sozinho pode ser palavra
+  return true;
+}
+const normChordName = n => n.replace(/^\(|\)$/g,'').replace(/7M/,'maj7').replace(/º|°/,'dim');
+function chordFromCifra(n){ const nn = normChordName(n); return chordFromName(nn.replace(/\(.*\)/,'')) && !/\(/.test(nn) ? chordFromName(nn) : {pos:[],mute:[],open:[],name:nn}; }
+function processLyricsText(raw, song){
+  const lines = raw.replace(/\r/g,'').replace(/\t/g,'    ').replace(/ /g,' ').split('\n');
+  const out = [], marks = {}, found = [];
+  let capo = null, inTab = false;
+  const isSec = l => /^\s*\[[^\]]+\]\s*$/.test(l);
+  const keep = l => !!l.trim();
+  for (let i=0; i<lines.length; i++){
+    let l = lines[i].replace(/\s+$/,'');
+    const t = l.trim();
+    const cm = t.match(/capotraste\s*(?:na|no|:)?\s*(\d{1,2})|^capo\s*:?\s*(\d{1,2})/i); if (cm){ capo = +(cm[1]||cm[2]); continue; }
+    if (/^\[tab\b/i.test(t)){ inTab = true; continue; }
+    if (inTab){ if (!t || TAB_LINE.test(l) || /^parte \d/i.test(t)) { if (!t) inTab = false; continue; } inTab = false; }
+    if (TAB_LINE.test(l) || JUNK.test(t)) continue;
+    const secInline = t.match(/^\[([^\]]+)\]\s*(.+)$/);
+    if (secInline && isChordLine(secInline[2])){ out.push('['+secInline[1].trim()+']'); l = secInline[2]; }
+    if (isChordLine(l)){
+      const chords = []; const re = /\S+/g; let m; while ((m = re.exec(l))){ if (CH_TOK.test(m[0])) chords.push({c:m.index, n:m[0]}); }
+      let j = i+1; while (j < lines.length && false) j++;
+      const nxt = lines[i+1] !== undefined ? lines[i+1].replace(/\s+$/,'') : '';
+      const nxtIsLyric = nxt.trim() && !isChordLine(nxt) && !isSec(nxt) && !TAB_LINE.test(nxt) && !JUNK.test(nxt.trim()) && !/^\[/.test(nxt.trim());
+      if (nxtIsLyric){
+        const words = []; const wr = /\S+/g; let w; while ((w = wr.exec(nxt))) words.push({s:w.index, e:w.index+w[0].length});
+        const li = out.length; let extra = 0; const used = new Set();
+        chords.forEach(ch => {
+          found.push(ch.n);
+          let wi = words.findIndex(x => ch.c >= x.s && ch.c < x.e); if (wi < 0) wi = words.findIndex(x => x.s > ch.c);
+          while (wi >= 0 && wi < words.length && used.has(wi)) wi++;
+          if ((wi < 0 || wi >= words.length) && words.length && !used.has(words.length-1) && ch.c - words[words.length-1].e <= 4) wi = words.length-1;
+          if (wi < 0 || wi >= words.length){ wi = words.length + extra; extra++; }
+          used.add(wi); marks[li+':'+wi] = ch.n;
+        });
+        out.push(nxt.trim() + ' ♪'.repeat(extra)); i++;
+      } else {
+        const li = out.length; chords.forEach((ch,k) => { found.push(ch.n); marks[li+':'+k] = ch.n; });
+        out.push(chords.map(()=> '♪').join(' '));
+      }
+      continue;
+    }
+    if (isSec(t)){ out.push('['+t.replace(/^\[|\]$/g,'').trim()+']'); continue; }
+    out.push(t);
+  }
+  // collapse blank lines, trim ends (marks use line indices, so remap)
+  const final = [], remap = {};
+  out.forEach((l, i) => { if (!l.trim() && (!final.length || !final[final.length-1].trim())) return; remap[i] = final.length; final.push(l); });
+  while (final.length && !final[final.length-1].trim()) final.pop();
+  // chords: reuse what the song already has, add the new ones
+  const chords = (song.chords||[]).map(c => JSON.parse(JSON.stringify(c)));
+  const idxOf = {}; chords.forEach((c,i) => { const n = detect(c); if (n && n!=='?' && idxOf[n]==null) idxOf[n] = i; });
+  const nameIdx = n => { const c = chordFromCifra(n); const d = detect(c) || normChordName(n); if (idxOf[d]==null){ chords.push(c); idxOf[d] = chords.length-1; } return idxOf[d]; };
+  const lmarks = {}; Object.entries(marks).forEach(([k, n]) => { const [l, w] = k.split(':').map(Number); if (remap[l]==null) return; lmarks[remap[l]+':'+w] = nameIdx(n); });
+  const verses = final.filter(l => l.trim() && !/^\[.*\]$/.test(l)).length;
+  let stanzas = 0, inSt = false; final.forEach(l => { const body = l.trim() && !/^\[.*\]$/.test(l); if (body && !inSt){ stanzas++; inSt = true; } if (!body) inSt = false; });
+  return {text: final.join('\n'), lmarks, chords, capo, hadChords: found.length > 0, verses, stanzas, placed: Object.keys(lmarks).length, changed: final.join('\n') !== raw.trim()};
+}
 function uniqueChordIdx(s){ const seen = new Map(); (s.chords||[]).forEach((c,i) => { const n = detect(c); if (n && n!=='?' && !seen.has(n)) seen.set(n,i); }); return [...seen.entries()]; }
 function markOrder(s){
   const m = s.lmarks||{}; return Object.keys(m).map(k => { const [l,w] = k.split(':').map(Number); return {k,l,w,c:m[k]}; }).sort((a,b)=>a.l-b.l||a.w-b.w);
@@ -1099,6 +1179,7 @@ function lyricsHTML(s, o={}){
   const lab = i => { const c = (s.chords||[])[i]; if (!c) return ''; const n = detect(c); return num ? (codeOf(c)||n) : n; };
   return lyricLines(s).map((line,li) => {
     if (!line.trim()) return '<div class="ly-gap" aria-hidden="true"></div>';
+    const sec = line.trim().match(/^\[(.+)\]$/); if (sec) return `<div class="ly-sec">${esc(sec[1])}</div>`;
     let wi = -1;
     const parts = line.split(/(\s+)/).map(tok => { if (!tok) return ''; if (/^\s+$/.test(tok)) return ' ';
       wi++; const key = li+':'+wi; const mk = marks[key]; const has = mk!=null && (s.chords||[])[mk];
@@ -1113,10 +1194,10 @@ function lyricsSection(s){
   const edit = view.lyEdit && view.lyEditId===s.id;
   const uniq = uniqueChordIdx(s);
   if (!has) return `<section><div class="sec-h"><h3>Letra e cifra</h3></div>
-    <div class="empty" style="text-align:left"><p style="margin:0 0 12px">Cole a letra para ver os acordes em cima das palavras e acompanhar no Praticar.</p>
-      <div class="row"><button class="btn primary" data-act="ly-paste">${I.paste}Colar letra</button>
-      <a class="btn ghost" href="${lyricSearch(s,'letras')}" target="_blank" rel="noopener">${I.search}Procurar no Letras</a>
-      <a class="btn ghost" href="${lyricSearch(s,'cifra')}" target="_blank" rel="noopener">${I.search}Cifra Club</a></div></div></section>`;
+    <div class="empty" style="text-align:left"><p style="margin:0 0 12px">Cole a letra, ou a cifra inteira com os acordes em cima, e o Fluid posiciona cada acorde na palavra certa.</p>
+      <div class="row"><button class="btn primary" data-act="ly-paste">${I.paste}Colar letra ou cifra</button>
+      <a class="btn ghost" href="${lyricSearch(s,'song')}" target="_blank" rel="noopener">${I.search}Procurar letra</a>
+      ${s.artist?`<a class="btn ghost" href="${lyricSearch(s,'artist')}" target="_blank" rel="noopener">${I.search}Músicas de ${esc(s.artist)}</a>`:''}</div></div></section>`;
   const nMarks = Object.keys(s.lmarks||{}).length;
   return `<section class="lyr">
     <div class="sec-h"><h3>Letra e cifra</h3>${!edit && !nMarks ? '<span class="hint">sem acordes marcados ainda</span>':''}
@@ -1386,9 +1467,10 @@ function renderEditor(){
         <textarea class="inp mono" id="ed-riffs" rows="3" placeholder="Intro: 60·60·45↑·42·60·60·50·51·52">${esc((s.riffs||[]).map(riffToText).join('\n'))}</textarea>
         <span class="hint" id="riff-msg">Corda+casa separados por ponto ou espaço. Rótulo opcional antes de ":".</span></div>
       <div class="field" id="ed-lyrics-f"><label for="ed-lyrics">Letra</label>
-        <div class="row" style="gap:8px"><a class="linkbtn sp-search" href="${lyricSearch(s,'letras')}" target="_blank" rel="noopener"><i class="other">${I.search}</i><span>Procurar no Letras</span></a><a class="linkbtn sp-search" href="${lyricSearch(s,'cifra')}" target="_blank" rel="noopener"><i class="other">${I.search}</i><span>Cifra Club</span></a></div>
-        <textarea class="inp" id="ed-lyrics" rows="8" placeholder="Cole ou digite a letra aqui, uma linha por verso">${esc(s.lyrics||'')}</textarea>
-        <span class="hint">Depois de salvar, abra a música e toque em Marcar acordes para colocar cada acorde em cima da palavra.</span></div>
+        <div class="row" style="gap:8px"><a class="linkbtn sp-search" id="ed-lysearch" href="${lyricSearch(s,'song')}" target="_blank" rel="noopener"><i class="other">${I.search}</i><span>Procurar letra</span></a><a class="linkbtn sp-search" id="ed-lyartist" href="${lyricSearch(s,'artist')}" target="_blank" rel="noopener"><i class="other">${I.search}</i><span>Só pelo artista</span></a></div>
+        <textarea class="inp" id="ed-lyrics" rows="9" placeholder="Cole a letra, ou a cifra com os acordes em cima da letra:&#10;&#10;[Refrão]&#10;Am          C&#10;Canto pra lua cheia">${esc(s.lyrics||'')}</textarea>
+        ${ed.lyMsg ? `<div class="ly-sum" role="status"><span>${esc(ed.lyMsg)}</span>${ed.lyUndo?`<button type="button" class="btn ghost" data-act="ly-undo">Desfazer</button>`:''}</div>` : ''}
+        <div class="row" style="gap:8px"><button type="button" class="btn" data-act="ly-tidy">${I.spark}Organizar letra</button><span class="hint" style="flex:1;min-width:180px">Ao colar, o Fluid limpa o texto e, se vier cifra, coloca os acordes nas palavras sozinho. Ajustes finos: Marcar acordes, na página da música.</span></div></div>
     </form>
 
   </aside>`;
@@ -1410,6 +1492,10 @@ function bindEditor(){
   const link = document.getElementById('ed-link');
   link.oninput = () => { const li = linkInfo(link.value.trim()); const m = document.getElementById('link-msg'); m.textContent = li ? (li.kind==='spotify'?'Faixa do Spotify reconhecida':li.kind==='yt'?'Vídeo do YouTube reconhecido':'Link salvo') : 'Opcional'; m.className = 'hint'+(li?' ok':''); };
   layer.querySelectorAll('#edform input, #edform textarea').forEach(el => el.addEventListener('input', () => { readFields(); saveDraft(); }));
+  const lyBox = document.getElementById('ed-lyrics');
+  if (lyBox) lyBox.addEventListener('paste', () => setTimeout(() => tidyLyrics('paste'), 0));
+  const updLy = () => { const s2 = {title: document.getElementById('ed-title').value, artist: document.getElementById('ed-artist').value}; const a = document.getElementById('ed-lysearch'), b = document.getElementById('ed-lyartist'); if (a) a.href = lyricSearch(s2,'song'); if (b) b.href = lyricSearch(s2,'artist'); };
+  document.getElementById('ed-title').addEventListener('input', updLy); document.getElementById('ed-artist').addEventListener('input', updLy);
   const upd = () => { const t = document.getElementById('ed-title').value.trim(), a = document.getElementById('ed-artist').value.trim(); const el = document.getElementById('ed-spsearch'); if (!el) return; el.href = spSearchUrl(t,a); document.getElementById('ed-spsearch-l').textContent = t ? 'Procurar "'+t+'" no Spotify' : 'Procurar no Spotify'; };
   document.getElementById('ed-title').addEventListener('input', upd); document.getElementById('ed-artist').addEventListener('input', upd);
   const spq = document.getElementById('sp-q'); if (spq) spq.onkeydown = e => { if (e.key==='Enter'){ e.preventDefault(); readFields(); spSearch(spq.value); } };
@@ -1432,6 +1518,8 @@ function bindEditor(){
     if (d.act==='toggle-paste'){ ed.showPaste = true; rerender(); setTimeout(()=>document.getElementById('ed-paste').focus(),30); return; }
     if (d.act==='do-paste'){ doPaste(); return; }
     if (d.act==='ai-paste'){ aiPaste(); return; }
+    if (d.act==='ly-tidy'){ tidyLyrics('button'); return; }
+    if (d.act==='ly-undo'){ readFields(); const u = ed.lyUndo; if (u){ ed.s.lyrics = u.lyrics; ed.s.lmarks = u.lmarks; ed.s.chords = u.chords; ed.s.capo = u.capo; } ed.lyUndo = null; ed.lyMsg = 'Desfeito. A letra voltou como você colou.'; rerender(true, false); return; }
     if (d.act==='sp-go'){ readFields(); spSearch(document.getElementById('sp-q').value); return; }
     if (d.spi!=null){ const t = ed.sp.results[+d.spi]; readFields(); ed.s.title = t.title; ed.s.artist = t.artist; ed.s.link = t.link; ed.sp.results = [t]; rerender(true, false); toast('Nome, artista e link preenchidos'); return; }
     if (d.capo!=null){ ed.s.capo = +d.capo; rerender(); return; }
@@ -1461,6 +1549,22 @@ function bindEditor(){
     if (d.etag){ const tg = d.etag; const cur = new Set(ed.s.tags||[]); cur.has(tg)?cur.delete(tg):cur.add(tg); ed.s.tags=[...cur]; rerender(); return; }
     if (d.act==='ed-addtag'){ edAddTag(); return; }
   };
+}
+function tidyLyrics(why){
+  if (!ed) return; readFields();
+  const raw = ed.s.lyrics || ''; if (!raw.trim()) return;
+  const r = processLyricsText(raw, ed.s);
+  if (!r.changed && !r.hadChords){ if (why==='button'){ ed.lyMsg = 'A letra já está organizada.'; ed.lyUndo = null; rerender(true,false); } return; }
+  ed.lyUndo = {lyrics: raw, lmarks: JSON.parse(JSON.stringify(ed.s.lmarks||{})), chords: JSON.parse(JSON.stringify(ed.s.chords||[])), capo: ed.s.capo};
+  ed.s.lyrics = r.text;
+  if (r.hadChords){ ed.s.lmarks = r.lmarks; ed.s.chords = r.chords; }
+  if (r.capo!=null && !ed.s.capo) ed.s.capo = r.capo;
+  const parts = [`${r.verses} ${r.verses===1?'linha':'linhas'}`, `${r.stanzas} ${r.stanzas===1?'estrofe':'estrofes'}`];
+  if (r.hadChords) parts.push(`${r.placed} ${r.placed===1?'acorde posicionado':'acordes posicionados'}`);
+  if (r.capo!=null) parts.push('capo '+r.capo);
+  ed.lyMsg = 'Organizei: ' + parts.join(' · ') + '.';
+  rerender(true, false);
+  const b = document.getElementById('ed-lyrics'); if (b){ try { b.scrollIntoView({block:'center'}); } catch(e){} }
 }
 function edAddTag(){
   const inp = document.getElementById('ed-newtag'); const v = inp && inp.value; if (!v || !v.trim()) return;
