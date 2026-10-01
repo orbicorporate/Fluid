@@ -22,6 +22,6 @@ const head = `<!doctype html>
 `;
 // a camada web precisa rodar antes do script do app
 const i = app.indexOf('<script>');
-const out = head + app.slice(0, i) + '<script src="/web.js"></script>\n' + app.slice(i) + '\n</body>\n</html>\n';
+const out = head + app.slice(0, i) + '<script src="/web.js"></script>\n<script src="/hub.js"></script>\n' + app.slice(i) + '\n</body>\n</html>\n';
 writeFileSync(new URL('../index.html', import.meta.url), out);
 console.log('index.html gerado', out.length, 'bytes');

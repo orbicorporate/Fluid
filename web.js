@@ -48,7 +48,7 @@
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   const over = document.createElement('div'); over.className = 'fx-over'; over.hidden = true; document.body.appendChild(over);
   const accBtn = document.createElement('button'); accBtn.className = 'fx-acc'; accBtn.hidden = true; accBtn.type = 'button'; document.body.appendChild(accBtn);
-  accBtn.onclick = () => showAccount();
+  accBtn.onclick = () => window.FluidHub ? window.FluidHub.open('pastas') : showAccount();
   const initials = t => (t||'?').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
   const brand = `<div class="fx-brand"><div class="brand-orb" aria-hidden="true"><svg class="brand-ico fl" viewBox="0 0 100 100" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="flBgd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1C0B06"/><stop offset=".5" stop-color="#0D0504"/><stop offset=".78" stop-color="#5E1C07"/><stop offset=".94" stop-color="#F06A1A"/><stop offset="1" stop-color="#FFB070"/></linearGradient><linearGradient id="flRimd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7A2A0C"/><stop offset=".6" stop-color="#B8420E"/><stop offset="1" stop-color="#FFB46E"/></linearGradient><linearGradient id="flFd" gradientUnits="userSpaceOnUse" x1="0" y1="27" x2="0" y2="70"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".55" stop-color="#EEF9FF"/><stop offset="1" stop-color="#A9E2FA"/></linearGradient><linearGradient id="flShined" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#FFE3C8" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><radialGradient id="flGlowd" cx=".5" cy="1" r=".75"><stop offset="0" stop-color="#FF8A2A" stop-opacity=".9"/><stop offset="1" stop-color="#FF6A00" stop-opacity="0"/></radialGradient><linearGradient id="flBgl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".62"/><stop offset=".45" stop-color="#F3F4FF" stop-opacity=".22"/><stop offset="1" stop-color="#EDE9FE" stop-opacity=".34"/></linearGradient><linearGradient id="flRiml" x1="0" y1=".5" x2="1" y2=".5"><stop offset="0" stop-color="#34E0BE"/><stop offset=".5" stop-color="#8B5CF6"/><stop offset="1" stop-color="#F43F7E"/><animateTransform attributeName="gradientTransform" type="rotate" from="0 .5 .5" to="360 .5 .5" dur="9s" repeatCount="indefinite"/></linearGradient><linearGradient id="flFl" gradientUnits="userSpaceOnUse" x1="30" y1="62" x2="72" y2="30" spreadMethod="reflect"><stop offset="0" stop-color="#1FC8A8"/><stop offset=".3" stop-color="#3FB8D8"/><stop offset=".62" stop-color="#9A5BE6"/><stop offset="1" stop-color="#E5245E"/><animateTransform attributeName="gradientTransform" type="translate" values="0 0;-26 0;0 0" dur="3.5s" repeatCount="indefinite"/></linearGradient><linearGradient id="flShinel" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#FFFFFF" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><radialGradient id="flGlowlA" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#2EE0B8" stop-opacity=".55"/><stop offset="1" stop-color="#2EE0B8" stop-opacity="0"/></radialGradient><radialGradient id="flGlowlB" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#F0457F" stop-opacity=".45"/><stop offset="1" stop-color="#F0457F" stop-opacity="0"/></radialGradient><radialGradient id="flGlowlC" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#8B5CF6" stop-opacity=".4"/><stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/></radialGradient><clipPath id="flClipF"><path d="M40.6 27H67.2Q70.6 27 70.6 30.4V34.4Q70.6 39.6 65.4 39.6H33.2Q30.6 39.6 32.2 37.6L38.4 28.6Q39.3 27 40.6 27Z"/><path d="M50.2 45.6H61.2Q64.6 45.6 64.6 49V53.6Q64.6 57.2 61 57.2H50.6Q48.4 57.2 47 59L40.6 67Q38.8 69.2 36 69.2H34Q31 69.2 31 66.4V61Q31 58.2 34 58.2H36.4Q38.6 58.2 39.8 56.7L46.8 47.4Q48.1 45.6 50.2 45.6Z"/></clipPath><clipPath id="flClipBox"><rect x="5" y="5" width="90" height="90" rx="27"/></clipPath><filter id="flBlur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.2"/></filter></defs><g class="fl-box fl-l"><rect x="5" y="5" width="90" height="90" rx="27" fill="url(#flBgl)"/><g clip-path="url(#flClipBox)"><ellipse class="fl-gA" cx="16" cy="92" rx="34" ry="24" fill="url(#flGlowlA)"/><ellipse class="fl-gC" cx="50" cy="100" rx="30" ry="16" fill="url(#flGlowlC)"/><ellipse class="fl-gB" cx="86" cy="88" rx="30" ry="24" fill="url(#flGlowlB)"/><path d="M14 18Q30 8 62 9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".9" filter="url(#flBlur)"/></g></g><g class="fl-box fl-d"><rect x="5" y="5" width="90" height="90" rx="27" fill="url(#flBgd)"/><g clip-path="url(#flClipBox)"><ellipse class="fl-glow" cx="50" cy="100" rx="58" ry="30" fill="url(#flGlowd)"/></g><rect x="5.6" y="5.6" width="88.8" height="88.8" rx="26.4" fill="none" stroke="url(#flRimd)" stroke-width="1.2" opacity=".9"/><rect class="fl-run fl-run-b" x="5.6" y="5.6" width="88.8" height="88.8" rx="26.4" pathLength="100" fill="none" stroke="#FFB070" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="14 86" filter="url(#flBlur)"/><rect class="fl-run" x="5.6" y="5.6" width="88.8" height="88.8" rx="26.4" pathLength="100" fill="none" stroke="#FFE2C4" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="14 86"/></g><g class="fl-f fl-l"><g class="fl-b1"><path d="M40.6 27H67.2Q70.6 27 70.6 30.4V34.4Q70.6 39.6 65.4 39.6H33.2Q30.6 39.6 32.2 37.6L38.4 28.6Q39.3 27 40.6 27Z" fill="url(#flFl)"/></g><g class="fl-b2"><path d="M50.2 45.6H61.2Q64.6 45.6 64.6 49V53.6Q64.6 57.2 61 57.2H50.6Q48.4 57.2 47 59L40.6 67Q38.8 69.2 36 69.2H34Q31 69.2 31 66.4V61Q31 58.2 34 58.2H36.4Q38.6 58.2 39.8 56.7L46.8 47.4Q48.1 45.6 50.2 45.6Z" fill="url(#flFl)"/></g><g clip-path="url(#flClipF)"><rect class="fl-shine" x="-30" y="20" width="22" height="56" fill="url(#flShinel)" transform="skewX(-22)"/></g></g><g class="fl-f fl-d"><g class="fl-b1"><path d="M40.6 27H67.2Q70.6 27 70.6 30.4V34.4Q70.6 39.6 65.4 39.6H33.2Q30.6 39.6 32.2 37.6L38.4 28.6Q39.3 27 40.6 27Z" fill="url(#flFd)"/></g><g class="fl-b2"><path d="M50.2 45.6H61.2Q64.6 45.6 64.6 49V53.6Q64.6 57.2 61 57.2H50.6Q48.4 57.2 47 59L40.6 67Q38.8 69.2 36 69.2H34Q31 69.2 31 66.4V61Q31 58.2 34 58.2H36.4Q38.6 58.2 39.8 56.7L46.8 47.4Q48.1 45.6 50.2 45.6Z" fill="url(#flFd)"/></g><g clip-path="url(#flClipF)"><rect class="fl-shine" x="-30" y="20" width="22" height="56" fill="url(#flShined)" transform="skewX(-22)"/></g></g></svg></div><b>Fluid</b></div>`;
   function show(html){ over.innerHTML = `<div class="fx-card" role="dialog" aria-modal="true">${html}</div>`; over.hidden = false; }
@@ -61,6 +61,10 @@
     if (/Email not confirmed/i.test(m)) return 'Confirme o e-mail pelo link que chegou na sua caixa de entrada.';
     if (/invite_used/.test(m)) return 'Esse convite já foi usado por outra pessoa. Peça um novo.';
     if (/invite_not_found/.test(m)) return 'Convite não encontrado. Peça um novo link.';
+    if (/invite_self/.test(m)) return 'Esse convite foi criado por você. Mande o link para a outra pessoa abrir.';
+    if (/keep_first/.test(m)) return 'A sua primeira pasta não pode ser apagada.';
+    if (/not_owner/.test(m)) return 'Só quem criou a pasta pode fazer isso.';
+    if (/create_notebook|delete_notebook|students|payments|teacher_settings|kind/.test(m) && /not find|does not exist|schema cache/i.test(m)) return 'Essa parte do Fluid ainda está sendo ativada. Tente de novo daqui a pouco.';
     if (/invite_expired/.test(m)) return 'Esse convite venceu (vale 14 dias). Peça um novo link.';
     return 'Não deu certo agora. Confira a conexão e tente de novo.';
   };
@@ -69,7 +73,7 @@
   async function inviteBanner(){
     if (!inviteToken || !sb) return '';
     try { const { data } = await sb.rpc('invite_info', { t: inviteToken }); const r = data && data[0];
-      if (r && !r.accepted) return `<div class="fx-inv">${esc(r.owner_name||'Um aluno')} convidou você para o ${esc(r.notebook_name)}. Entre ou crie sua conta para abrir.</div>`;
+      if (r && !r.accepted) return `<div class="fx-inv">${esc(r.owner_name||'Alguém')} convidou você ${r.role==='student'?'como aluno ':r.role==='teacher'?'como professor ':''}para a pasta ${esc(r.notebook_name)}. Entre ou crie sua conta para abrir.</div>`;
     } catch(e){}
     return '';
   }
@@ -114,14 +118,16 @@
       catch(e){ inviteErr = errText(e); }
       inviteToken = ''; sessionStorage.removeItem('fluid.convite');
     }
-    const { data: mem } = await sb.from('notebook_members').select('role, notebook_id, notebooks(id,name,owner_id)').eq('user_id', uid);
-    notebooks = (mem||[]).filter(m=>m.notebooks).map(m => ({ id: m.notebooks.id, name: m.notebooks.name, role: m.role, owner_id: m.notebooks.owner_id }));
+    await loadNotebooks();
     const saved = localStorage.getItem(LSNB);
     current = notebooks.find(n => n.id === saved) || notebooks.find(n => n.role==='owner') || notebooks[0];
     if (!current){ show(`${brand}<h2>Nenhum caderno</h2><p>Sua conta ainda não tem caderno. Recarregue a página em alguns segundos.</p>`); return; }
     localStorage.setItem(LSNB, current.id);
     try { const r = await fetch('/api/config'); if (r.ok) features = await r.json(); } catch(e){}
-    hide(); renderAccBtn();
+    hide();
+    window.FluidWeb = { sb, esc, errText, initials, me: () => me, notebooks: () => notebooks, current: () => current, switchTo, loadNotebooks,
+      signOut: async () => { await sb.auth.signOut(); localStorage.removeItem(LSNB); location.reload(); }, showAccount };
+    if (window.FluidHub) window.FluidHub.boot(); else renderAccBtn();
     resolveDb(makeDb(current.id));
     if (inviteErr){ show(`${brand}<h2>Convite</h2><p>${esc(inviteErr)}</p><button class="btn primary" type="button" id="fx-close">Continuar</button>`); over.onclick = e => { if (e.target.closest('#fx-close')) hide(); }; inviteErr = ''; }
   }
@@ -130,6 +136,15 @@
     accBtn.innerHTML = `<i aria-hidden="true">${esc(initials(me.name))}</i><span>${other ? esc(current.name) : esc(me.name)}</span>`;
     accBtn.setAttribute('aria-label', 'Conta e caderno: ' + current.name);
     accBtn.hidden = false;
+  }
+  async function loadNotebooks(){
+    const uid = session.user.id;
+    let r = await sb.from('notebook_members').select('role, notebook_id, notebooks(id,name,owner_id,kind,color,created_at)').eq('user_id', uid);
+    if (r.error) r = await sb.from('notebook_members').select('role, notebook_id, notebooks(id,name,owner_id,created_at)').eq('user_id', uid);
+    notebooks = (r.data||[]).filter(m=>m.notebooks).map(m => ({ id: m.notebooks.id, name: m.notebooks.name, role: m.role, owner_id: m.notebooks.owner_id, kind: m.notebooks.kind || 'personal', color: m.notebooks.color || '', created_at: m.notebooks.created_at }))
+      .sort((a,b) => (a.role==='owner'?0:1) - (b.role==='owner'?0:1) || String(a.created_at).localeCompare(String(b.created_at)));
+    if (current) current = notebooks.find(n => n.id === current.id) || current;
+    return notebooks;
   }
   function switchTo(id){ localStorage.setItem(LSNB, id); location.reload(); }
 
@@ -156,7 +171,7 @@
       if (t.dataset.rm){ if (t.dataset.armed){ await sb.from('notebook_members').delete().eq('notebook_id', current.id).eq('user_id', t.dataset.rm); showAccount(); } else { t.dataset.armed='1'; t.textContent='Confirmar'; } }
       if (t.id==='fx-inv'){
         t.disabled = true;
-        const { data, error } = await sb.from('invites').insert({ notebook_id: current.id }).select('token').single();
+        const { data, error } = await sb.from('invites').insert({ notebook_id: current.id, role: 'teacher' }).select('token').single();
         if (error){ t.disabled = false; over.querySelector('#fx-invbox').innerHTML = `<p class="fx-err">${esc(errText(error))}</p>`; return; }
         const link = location.origin + location.pathname + '?convite=' + data.token;
         over.querySelector('#fx-invbox').innerHTML = `<div class="fx-copy"><input class="inp" id="fx-invlink" readonly value="${esc(link)}" aria-label="Link de convite"><button class="btn" type="button" id="fx-cp">Copiar</button></div><p style="margin-top:8px">Cada link vale para uma pessoa.</p>`;
