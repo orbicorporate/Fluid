@@ -705,6 +705,22 @@ body{background-attachment:fixed}
 @keyframes flPop{50%{transform:scale(1.06)}}
 .fl .fl-f{transform-box:view-box;transform-origin:50px 50px}
 .brand b,.fx-brand b{font-family:"Quicksand",var(--fDisplay)!important;font-weight:500!important;font-size:23px!important;letter-spacing:.01em!important}
+
+/* ---- painel de dúvidas ---- */
+.ph{display:flex;align-items:center;gap:10px}
+.ph-ico{width:30px;height:30px;border-radius:10px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-family:var(--fDisplay);font-size:15px;font-weight:700;color:var(--onAccent);background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 70%,#fff),var(--accent));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 16px -4px var(--glow)}
+.ph-ico.hw{background:linear-gradient(160deg,color-mix(in srgb,var(--ok) 70%,#fff),var(--ok))}
+.ph-ico svg{width:16px;height:16px}
+.panel.ask{position:relative;overflow:hidden}
+.panel.ask::before{content:"";position:absolute;right:-60px;top:-70px;width:180px;height:180px;border-radius:50%;background:var(--accent);opacity:.12;filter:blur(40px);pointer-events:none}
+.ask-hint{margin:2px 0 0!important;font-size:13.5px}
+.ask-add{display:flex;gap:8px;margin-top:12px}
+.ask-add .inp{flex:1;height:44px;border-radius:999px;padding:0 16px;min-width:0}
+.ask-btn{width:44px;height:44px;flex-shrink:0;border-radius:50%;border:0;padding:0;display:flex;align-items:center;justify-content:center;color:var(--onAccent);background:var(--accent);background-image:linear-gradient(180deg,rgba(255,255,255,.25),rgba(255,255,255,0) 60%);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 8px 20px -6px var(--glow);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.ask-btn:hover{transform:scale(1.06)}
+.ask-btn svg{width:20px;height:20px}
+.ask-foot{margin:10px 2px 0;font-size:12px;color:var(--faint)}
+.ask .check-t{font-size:14.5px}
 </style>
 
 <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -2146,6 +2162,12 @@ async function deleteLesson(id){
   lessons = lessons.filter(l=>l.id!==id);
   if (db){ try { await db.collection('lessons').doc(id).delete(); } catch(e){ toast('Não consegui apagar agora.'); } } else lsSet(LSL, lessons);
 }
+function addQuestion(){
+  const inp = document.getElementById('q-new'); const t = (inp && inp.value || '').trim(); const last = lessons[0];
+  if (!t){ inp && inp.focus(); return; } if (!last) return;
+  saveLesson({...last, questions:[...(last.questions||[]).map(x=>({...x})), {t, done:false}]}); render();
+  toast('Dúvida anotada para a próxima aula'); const n = document.getElementById('q-new'); if (n) n.focus();
+}
 function toggleItem(lid, list, idx){
   const l = lessons.find(x=>x.id===lid); if (!l) return; const arr = (l[list]||[]).map(x=>({...x}));
   if (!arr[idx]) return; arr[idx].done = !arr[idx].done; const nl = {...l, [list]:arr}; saveLesson(nl); render();
@@ -2220,10 +2242,12 @@ function renderAulas(){
   const songById = id => songs.find(s=>s.id===id);
   app.innerHTML = headerHTML() + `
   ${lessons.length ? `<div class="aulas-top">
-    <section class="panel"><div class="sec-h"><h3>Lição de casa pendente</h3><span class="chip ${open.length?'warn':'ok'}">${open.length?open.length+' '+(open.length===1?'item':'itens'):'tudo feito'}</span></div>
+    <section class="panel"><div class="sec-h"><h3 class="ph"><span class="ph-ico hw" aria-hidden="true">${I.note}</span>Lição de casa pendente</h3><span class="chip ${open.length?'warn':'ok'}">${open.length?open.length+' '+(open.length===1?'item':'itens'):'tudo feito'}</span></div>
       ${open.length ? `<div class="check-list">${open.map(({l,i,h})=>`<div class="check-row"><button class="check" data-tcheck="${esc(l.id)}:homework:${i}" aria-label="Marcar como feito"></button><span class="check-t">${esc(h.t)}<small>aula de ${dateParts(l.date).d} ${dateParts(l.date).mon}</small></span></div>`).join('')}</div>` : `<p class="hint" style="margin:0">Nada pendente. Bom treino!</p>`}</section>
-    <section class="panel"><div class="sec-h"><h3>Levar na próxima aula</h3></div>
-      ${qs.length ? `<div class="check-list">${qs.map(({q,i})=>`<div class="check-row"><button class="check" data-tcheck="${esc(last.id)}:questions:${i}" aria-label="Marcar como respondida"></button><span class="check-t">${esc(q.t)}</span></div>`).join('')}</div>` : `<p class="hint" style="margin:0">Anote aqui as dúvidas que surgirem no treino. Elas aparecem na aula mais recente.</p>`}</section>
+    <section class="panel ask"><div class="sec-h"><h3 class="ph"><span class="ph-ico" aria-hidden="true">?</span>Levar na próxima aula</h3>${qs.length?`<span class="chip">${qs.length} ${qs.length===1?'dúvida':'dúvidas'}</span>`:''}</div>
+      ${qs.length ? `<div class="check-list">${qs.map(({q,i})=>`<div class="check-row"><button class="check" data-tcheck="${esc(last.id)}:questions:${i}" aria-label="Marcar como respondida" title="Marcar como respondida"></button><span class="check-t">${esc(q.t)}</span></div>`).join('')}</div>` : `<p class="hint ask-hint">Travou em alguma coisa no treino? Escreva aqui e pergunte ao professor na próxima aula.</p>`}
+      <div class="ask-add"><input class="inp" id="q-new" placeholder="Ex.: como abafar a corda no ritmo?" maxlength="160" aria-label="Nova dúvida para a próxima aula" enterkeyhint="done"><button class="ask-btn" data-act="q-add" aria-label="Anotar dúvida">${I.plus}</button></div>
+      ${qs.length?`<p class="ask-foot">Na aula, toque no quadradinho quando a dúvida for respondida.</p>`:''}</section>
   </div>` : ''}
   <div class="list">
     ${!lessons.length ? `<div class="empty"><h3>Nenhuma aula registrada</h3><p>Depois de cada aula, anote o que foi passado, a lição de casa e as dúvidas. Na próxima aula você abre aqui e já sabe o que perguntar.</p><button class="btn primary" data-act="new-lesson">${I.plus}Registrar a aula de hoje</button></div>`
@@ -2306,6 +2330,7 @@ function renderTreino(){
 }
 
 /* ---------- global wiring ---------- */
+app.addEventListener('keydown', e => { if (e.target.id==='q-new' && e.key==='Enter'){ e.preventDefault(); addQuestion(); } });
 app.addEventListener('click', e => {
   const t = e.target.closest('[data-act],[data-open],[data-pop],[data-disp],[data-tag],[data-tagdel],[data-tab],[data-lesson],[data-tcheck],[data-pair],[data-tune],[data-trsong],[data-imp]'); if (!t) return;
   if (t.dataset.imp!=null){ importTrack(+t.dataset.imp); return; }
@@ -2335,6 +2360,7 @@ app.addEventListener('click', e => {
   if (a==='tag-add'){ const n=document.getElementById('tag-new'); addTag(n && n.value).then(tg=>{ render(); const m=document.getElementById('tag-new'); m&&m.focus(); }); return; }
   if (a==='new') openEditor(null);
   if (a==='theme') return toggleTheme();
+  if (a==='q-add') return addQuestion();
   if (a==='paste') openEditor(null, {paste:true});
   if (a==='clear-filter'){ view.chordFilter=null; render(); }
   if (a==='focus-list'){ const l=document.getElementById('list'); l && l.scrollIntoView({behavior:'smooth',block:'start'}); }
