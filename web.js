@@ -5,6 +5,7 @@
    use('sample') -> interpretação com IA pela função /api/interpret */
 (() => {
   if (window.claude && window.claude.use) return; // dentro do Claude: usa a plataforma
+  window.FLUID_WEB = true;
   const cfg = window.FLUID_CONFIG || {};
   const sb = window.supabase && cfg.supabaseUrl ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

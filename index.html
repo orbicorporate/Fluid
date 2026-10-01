@@ -614,6 +614,32 @@ textarea.inp{height:auto;min-height:92px;padding:12px 14px;resize:vertical;line-
 .ly-sum span{flex:1;min-width:160px}
 .ly-sum .btn{height:34px;color:var(--text)}
 #ed-lyrics{font-family:var(--fMono);font-size:13px;line-height:1.5;white-space:pre;overflow-x:auto}
+
+a.btn{text-decoration:none;color:var(--text)}
+a.btn.primary{color:var(--onAccent)}
+a.tag{text-decoration:none}
+.tag.ext{height:32px;padding:0 12px 0 10px;font-size:12.5px}
+.imp{margin-block:4px 14px;padding:14px;border-radius:24px;background-color:var(--glass);background-image:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 60%);border:1px solid var(--glassEdgeSoft);border-top-color:var(--glassEdge);box-shadow:var(--glassHi),var(--glassDrop);-webkit-backdrop-filter:var(--blurG);backdrop-filter:var(--blurG);display:flex;flex-direction:column;gap:12px}
+.imp-row{display:flex;gap:10px;align-items:center}
+.imp-search{flex:1 1 auto;box-shadow:none}
+.imp-ico{width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--onAccent);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.imp-search .imp-ico svg{width:14px;height:14px;color:var(--onAccent)}
+.imp-res{display:flex;flex-direction:column;gap:8px}
+.imp-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.imp-head > span{font-weight:600}
+.imp-head .btn{margin-left:auto;height:36px;width:36px}
+.imp-links{display:flex;flex-wrap:wrap;gap:6px}
+.imp-item{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;padding:10px;border-radius:18px;background:var(--glass2);border:1px solid var(--glassEdgeSoft)}
+.imp-cover{width:52px;height:52px;border-radius:12px;object-fit:cover;max-width:100%}
+.imp-cover.ph{display:flex;align-items:center;justify-content:center;background:var(--glowSoft);color:var(--accentInk)}
+.imp-cover.ph svg{width:20px;height:20px}
+.imp-txt{min-width:0;display:flex;flex-direction:column;gap:2px}
+.imp-txt b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-txt small{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-txt .imp-links{margin-top:6px}
+.imp-item .btn{height:40px;padding:0 14px}
+@media (max-width:520px){.imp-item{grid-template-columns:44px 1fr}.imp-cover{width:44px;height:44px}.imp-item > .btn{grid-column:1 / -1}}
+.imp-hint{padding:14px;border-radius:18px;background:var(--glowSoft);color:var(--text);font-size:14px;line-height:1.45;display:flex;flex-direction:column;gap:10px}
 </style>
 
 <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -749,6 +775,7 @@ function linkInfo(url){
   if(!url) return null;
   let m = url.match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(track|album|playlist)\/([A-Za-z0-9]+)/);
   if (m) return {kind:'spotify', label:'Ouvir no Spotify', id:m[2]};
+  if (/open\.spotify\.com\/search\//.test(url)) return {kind:'spotify', label:'Procurar no Spotify'};
   if (/youtu\.?be/.test(url)) return {kind:'yt', label:'Ver no YouTube'};
   if (/cifraclub|cifras/.test(url)) return {kind:'other', label:'Abrir cifra'};
   return {kind:'other', label:'Abrir link'};
@@ -856,16 +883,82 @@ async function saveMeta(which){
 }
 let mcp = null;
 (async () => { try { mcp = window.claude && window.claude.use ? await window.claude.use('mcp') : null; } catch(e){ mcp = null; } if (mcp && view.sheet==='editor' && ed) rerender(); })();
+function parseMusic(p){
+  const ents = (p && p.entities) || [];
+  return ents.filter(e => e.entity_type==='MUSIC' && e.name).map(e => {
+    const covers = (e.display && e.display.covers) || [];
+    const cv = covers.find(c => c.size==='SMALL') || covers.find(c => c.size==='DEFAULT') || covers[0];
+    const url = String(e.url||''); const isTrack = /open\.spotify\.com\/(?:intl-[a-z]+\/)?track\//.test(url);
+    return { title: e.name||'', artist: (e.creators||[]).map(c=>c.name).join(' & '), album: e.parent && e.parent.name || '',
+      link: isTrack ? url.split('?')[0] : '', source: e.source || 'spotify',
+      cover: cv && cv.url || '', ms: +(e.playback && e.playback.duration_ms) || 0 };
+  });
+}
+const slugify = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/&/g,' e ').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+const firstArtist = a => String(a||'').split(/\s*(?:&|,|feat\.?|part\.?|\bx\b)\s*/i)[0];
+function webLinks(title, artist){
+  const t = (title||'').trim(), a = (artist||'').trim(), q = [t, a].filter(Boolean).join(' ');
+  const fa = slugify(firstArtist(a)), ft = slugify(t);
+  return [
+    {k:'cifra', label:'Cifra Club', url: fa && ft ? `https://www.cifraclub.com.br/${fa}/${ft}/` : 'https://www.google.com/search?q=' + encodeURIComponent(q + ' cifra site:cifraclub.com.br')},
+    {k:'letra', label:'Letra', url: fa && ft ? `https://www.letras.mus.br/${fa}/${ft}/` : 'https://www.google.com/search?q=' + encodeURIComponent(q + ' letra site:letras.mus.br')},
+    {k:'yt', label:'YouTube', url: 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q)},
+    {k:'sp', label:'Spotify', url: 'https://open.spotify.com/search/' + encodeURIComponent(q)},
+  ];
+}
+async function findMusic(q){
+  q = (q||'').trim(); if (!q) return;
+  view.imp = {q, loading:true, results:[], err:''}; render();
+  if (!mcp){ view.imp = {q, loading:false, results:[], err: 'off'}; render(); return; }
+  try {
+    const r = await mcp.callTool('Spotify', 'search', {prompt:q, language:'pt-BR'});
+    let p = r && r.payload; if (typeof p === 'string'){ try { p = JSON.parse(p); } catch(e){} }
+    const res = parseMusic(p).slice(0, 6);
+    view.imp = {q, loading:false, results:res, err: res.length ? '' : 'none'};
+  } catch(err){
+    const c = err && err.code;
+    view.imp = {q, loading:false, results:[], err: c==='consent_required'||c==='not_granted'||c==='approval_required' ? 'consent' : c==='rate_limited' ? 'rate' : 'fail'};
+  }
+  render(); const i = document.getElementById('imp-q'); if (i){ i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+}
+function importHTML(){
+  const im = view.imp; const web = !!window.FLUID_WEB;
+  const linkTags = (t, a) => webLinks(t, a).map(l => `<a class="tag ext" style="--tc:${{cifra:'#EA580C',letra:'#7C3AED',yt:'#E11D48',sp:'#1DB954'}[l.k]}" href="${esc(l.url)}" target="_blank" rel="noopener"><i class="dot" aria-hidden="true"></i>${esc(l.label)}</a>`).join('');
+  return `<section class="imp" aria-label="Buscar música nova">
+    <div class="imp-row">
+      <label class="search imp-search"><span class="imp-ico" aria-hidden="true">${I.plus}</span><input id="imp-q" type="search" enterkeyhint="search" placeholder="Buscar música nova para o caderno" value="${esc(im?im.q:(view.impQ||''))}" aria-label="Buscar música nova"></label>
+      <button class="btn primary" data-act="imp-go" ${im&&im.loading?'disabled':''}>${im&&im.loading?'Buscando…':'Buscar'}</button>
+    </div>
+    ${im ? `<div class="imp-res">
+      <div class="imp-head"><span>Resultados para "${esc(im.q)}"</span><button class="btn icon ghost" data-act="imp-close" aria-label="Fechar resultados">${I.close}</button></div>
+      <div class="imp-links">${linkTags(im.q,'')}</div>
+      ${im.loading ? `<p class="hint" style="margin:6px 2px">Procurando…</p>` : ''}
+      ${im.err==='off' ? `<p class="hint" style="margin:6px 2px">A busca de faixas não está disponível aqui. Use os atalhos acima e depois Colar da aula.</p>` : ''}
+      ${im.err==='consent' ? `<p class="hint" style="margin:6px 2px">Para buscar faixas, permita que o Fluid use o Spotify e tente de novo.</p>` : ''}
+      ${im.err==='rate' ? `<p class="hint" style="margin:6px 2px">Muitas buscas seguidas. Espere alguns segundos.</p>` : ''}
+      ${im.err==='fail' ? `<p class="hint" style="margin:6px 2px">A busca falhou agora. Tente de novo, ou use os atalhos acima.</p>` : ''}
+      ${im.err==='none' ? `<p class="hint" style="margin:6px 2px">Nenhuma faixa encontrada. Tente o nome com o artista.</p>` : ''}
+      ${im.results.map((t,i) => { const have = songs.find(s => slugify(s.title)===slugify(t.title));
+        return `<div class="imp-item">
+          ${web && t.cover ? `<img class="imp-cover" src="${esc(t.cover)}" alt="" loading="lazy">` : `<span class="imp-cover ph" aria-hidden="true">${I.note}</span>`}
+          <div class="imp-txt"><b>${esc(t.title)}</b><small>${esc(t.artist)}${t.album && t.album!==t.title ? ' · '+esc(t.album) : ''}${t.ms ? ' · '+fmtMs(t.ms) : ''}</small>
+            <div class="imp-links">${linkTags(t.title, t.artist)}</div></div>
+          ${have ? `<button class="btn" data-open="${esc(have.id)}">Abrir</button>` : `<button class="btn primary" data-imp="${i}">${I.plus}Importar</button>`}
+        </div>`; }).join('')}
+    </div>` : ''}
+  </section>`;
+}
+function importTrack(i){
+  const t = view.imp && view.imp.results[i]; if (!t) return;
+  openEditor(null, {prefill:{title:t.title, artist:t.artist, link:t.link || webLinks(t.title,t.artist)[3].url}, imported:t});
+}
 async function spSearch(q){
   if (!ed) return; q = (q||'').trim(); if (!q) return;
   ed.sp = {q, loading:true, results:[], err:''}; rerender();
   try {
     const r = await mcp.callTool('Spotify', 'search', {prompt:q, language:'pt-BR'});
     let p = r && r.payload; if (typeof p === 'string'){ try { p = JSON.parse(p); } catch(e){} }
-    const ents = (p && p.entities) || [];
-    const tracks = ents.filter(e => e.entity_type==='MUSIC' && /\/track\//.test(e.url||'')).map(e => ({
-      title: e.name||'', artist: (e.creators||[]).map(c=>c.name).join(' & '), album: e.parent && e.parent.name || '',
-      link: (e.url||'').split('?')[0], ms: +(e.playback && e.playback.duration_ms) || 0 }));
+    const tracks = parseMusic(p);
     if (!ed) return;
     ed.sp = {q, loading:false, results:tracks, err: tracks.length ? '' : 'Nenhuma faixa encontrada. Tente o nome da música com o artista.'};
   } catch(err){
@@ -995,8 +1088,9 @@ function render(){
     ${songs.length ? `<div class="orbit-legend" aria-hidden="true"><span><i class="k"></i>já sei</span><span><i class="c"></i>aprendendo</span><span><i></i>músicas</span></div>`:''}
   </section>
   ${songs.length && !known.length ? `<p class="orbit-tip">Toque num acorde para ver como montar e marcar que você já sabe. Ele vai para o anel de dentro.</p>`:''}
+  ${importHTML()}
   <div class="bar">
-    <label class="search">${I.search}<input id="q" type="search" placeholder="Buscar música, artista, acorde ou pastilha" value="${esc(view.q)}" aria-label="Buscar"></label>
+    <label class="search">${I.search}<input id="q" type="search" placeholder="Filtrar o caderno: música, acorde ou pastilha" value="${esc(view.q)}" aria-label="Buscar"></label>
     <div class="seg" role="group" aria-label="Como mostrar os acordes"><button data-disp="num" aria-pressed="${view.display==='num'}">Números</button><button data-disp="name" aria-pressed="${view.display!=='num'}">Cifra</button></div>
   </div>
   <div class="tagbar" role="group" aria-label="Pastilhas">
@@ -1015,6 +1109,8 @@ function render(){
       list.map((s,i)=>songCard(s,i)).join('')}
   </div>
   ${mode==='local' ? `<p class="note-local">Suas músicas estão salvas só neste aparelho.</p>` : ''}`;
+  const iq = document.getElementById('imp-q');
+  if (iq){ iq.addEventListener('keydown', e => { if (e.key==='Enter'){ e.preventDefault(); findMusic(iq.value); } }); iq.addEventListener('input', () => { view.impQ = iq.value; }); }
   const q = document.getElementById('q');
   q.addEventListener('input', e => { view.q = e.target.value; const l = document.getElementById('list'); const f = filtered(); l.innerHTML = f.length ? f.map((s,i)=>songCard(s,i)).join('') : `<div class="empty"><p>Nada encontrado.</p></div>`; });
   app.querySelectorAll('[data-tagname]').forEach(inp => {
@@ -1219,8 +1315,9 @@ function lyricsSection(s){
   if (!has) return `<section><div class="sec-h"><h3>Letra e cifra</h3></div>
     <div class="empty" style="text-align:left"><p style="margin:0 0 12px">Cole a letra, ou a cifra inteira com os acordes em cima, e o Fluid posiciona cada acorde na palavra certa.</p>
       <div class="row"><button class="btn primary" data-act="ly-paste">${I.paste}Colar letra ou cifra</button>
-      <a class="btn ghost" href="${lyricSearch(s,'song')}" target="_blank" rel="noopener">${I.search}Procurar letra</a>
-      ${s.artist?`<a class="btn ghost" href="${lyricSearch(s,'artist')}" target="_blank" rel="noopener">${I.search}Músicas de ${esc(s.artist)}</a>`:''}</div></div></section>`;
+      <a class="btn" href="${lyricSearch(s,'song')}" target="_blank" rel="noopener">${I.search}Procurar letra</a>
+      ${s.artist?`<a class="btn" href="${lyricSearch(s,'artist')}" target="_blank" rel="noopener">${I.search}Músicas de ${esc(s.artist)}</a>`:''}
+      ${s.title?`<a class="btn" href="${webLinks(s.title, s.artist)[0].url}" target="_blank" rel="noopener">${I.search}Cifra Club</a>`:''}</div></div></section>`;
   const nMarks = Object.keys(s.lmarks||{}).length;
   return `<section class="lyr">
     <div class="sec-h"><h3>Letra e cifra</h3>${!edit && !nMarks ? '<span class="hint">sem acordes marcados ainda</span>':''}
@@ -1381,7 +1478,8 @@ let ed = null;
 function blankSong(){ return {id:uid(), title:'', artist:'', link:'', capo:0, bpm:null, meter:'4/4', strum:['D','','D','U','','U','D','U'], chords:[], notes:'', lessonDate:todayLocal(), createdAt:new Date().toISOString()}; }
 function openEditor(song, opts={}){
   const s = song ? JSON.parse(JSON.stringify(song)) : blankSong();
-  ed = {s, sp:null, isNew:!song, sel:null, work:{pos:[],mute:[],open:[]}, showPaste:!!opts.paste, taps:[], chordMsg:''};
+  if (opts.prefill) Object.assign(s, opts.prefill);
+  ed = {s, sp:null, isNew:!song, sel:null, work:{pos:[],mute:[],open:[]}, showPaste:!!(opts.paste||opts.imported), taps:[], chordMsg:'', imported: opts.imported || null};
   view.sheet='editor'; document.body.style.overflow='hidden';
   renderEditor();
   if (opts.paste) setTimeout(()=>{ const t=document.getElementById('ed-paste'); t&&t.focus(); }, 60);
@@ -1410,6 +1508,8 @@ function renderEditor(){
       <button class="btn primary" data-act="ed-save">Salvar música</button>
     </div>
     <form class="sheet-body" id="edform" autocomplete="off">
+      ${ed.imported ? `<div class="imp-hint"><b>${esc(ed.s.title)}</b> já veio com nome, artista e link. Agora traga a cifra: abra no Cifra Club, copie tudo e cole em Letra, ou cole a mensagem do professor abaixo.
+        <div class="imp-links">${webLinks(ed.s.title, ed.s.artist).map(l => `<a class="tag ext" style="--tc:${{cifra:'#EA580C',letra:'#7C3AED',yt:'#E11D48',sp:'#1DB954'}[l.k]}" href="${esc(l.url)}" target="_blank" rel="noopener"><i class="dot" aria-hidden="true"></i>${esc(l.label)}</a>`).join('')}</div></div>` : ''}
       ${mcp ? `<div class="spbox">
         <div class="row" style="flex-wrap:nowrap"><label class="search" style="flex:1 1 auto;box-shadow:none"><span class="sp-logo" aria-hidden="true">${I.note}</span><input id="sp-q" placeholder="Buscar música no Spotify" value="${esc((ed.sp&&ed.sp.q)||'')}" aria-label="Buscar música no Spotify" enterkeyhint="search"></label>
         <button type="button" class="btn primary" data-act="sp-go" ${ed.sp&&ed.sp.loading?'disabled':''}>${ed.sp&&ed.sp.loading?'Buscando…':'Buscar'}</button></div>
@@ -2131,7 +2231,8 @@ function renderTreino(){
 
 /* ---------- global wiring ---------- */
 app.addEventListener('click', e => {
-  const t = e.target.closest('[data-act],[data-open],[data-pop],[data-disp],[data-tag],[data-tagdel],[data-tab],[data-lesson],[data-tcheck],[data-pair],[data-tune],[data-trsong]'); if (!t) return;
+  const t = e.target.closest('[data-act],[data-open],[data-pop],[data-disp],[data-tag],[data-tagdel],[data-tab],[data-lesson],[data-tcheck],[data-pair],[data-tune],[data-trsong],[data-imp]'); if (!t) return;
+  if (t.dataset.imp!=null){ importTrack(+t.dataset.imp); return; }
   if (t.dataset.tab){ setTab(t.dataset.tab); render(); return; }
   if (t.dataset.lesson){ openLesson(lessons.find(l=>l.id===t.dataset.lesson)); return; }
   if (t.dataset.tcheck){ const [id,list,i] = t.dataset.tcheck.split(':'); toggleItem(id, list, +i); toast(list==='homework'?'Lição marcada como feita':'Dúvida marcada como respondida'); return; }
@@ -2148,6 +2249,8 @@ app.addEventListener('click', e => {
   const a = t.dataset.act;
   if (a==='new-lesson'){ openLesson(null); return; }
   if (a==='pair-custom'){ const x = document.getElementById('pa').value, y = document.getElementById('pb').value; if (x===y){ toast('Escolha dois acordes diferentes'); return; } openTrainer(x,y); return; }
+  if (a==='imp-go'){ const iq = document.getElementById('imp-q'); findMusic(iq && iq.value); return; }
+  if (a==='imp-close'){ view.imp = null; view.impQ = ''; render(); return; }
   if (a==='tag-all'){ view.tagFilter=null; render(); return; }
   if (a==='clear-all'){ view.tagFilter=null; view.chordFilter=null; view.readyFilter=false; view.q=''; render(); return; }
   if (a==='ready'){ view.readyFilter = !view.readyFilter; render(); return; }
