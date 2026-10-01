@@ -1971,9 +1971,28 @@ function closePractice(){ if (practice){ stopMetro(); try{ 0; }catch(e){} } prac
 
 /* ---------- guitar sound (Karplus-Strong pluck) ---------- */
 const audio = {ctx:null, cache:{}};
+/* iPhone: com a chave de silencioso ligada o Safari cala o Web Audio. Pedimos sessão de "reprodução"
+   (iOS 17+) e, para versões antigas, tocamos um áudio mudo em loop, que faz o sistema tratar o app como player. */
+try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch(e){}
+function silentWavUrl(){
+  const sr = 8000, n = sr/2, b = new ArrayBuffer(44 + n*2), v = new DataView(b);
+  const w = (o, t) => { for (let i=0;i<t.length;i++) v.setUint8(o+i, t.charCodeAt(i)); };
+  w(0,'RIFF'); v.setUint32(4, 36 + n*2, true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,'data'); v.setUint32(40,n*2,true);
+  return URL.createObjectURL(new Blob([b], {type:'audio/wav'}));
+}
+function unlockAudio(){
+  try {
+    if (!audio.tag){ const t = document.createElement('audio'); t.src = silentWavUrl(); t.loop = true; t.setAttribute('playsinline',''); t.setAttribute('x-webkit-airplay','deny'); t.preload = 'auto'; audio.tag = t; }
+    if (audio.tag.paused){ const pr = audio.tag.play(); if (pr && pr.catch) pr.catch(()=>{}); }
+    const ctx = actx(); const src = ctx.createBufferSource(); src.buffer = ctx.createBuffer(1, 1, 22050); src.connect(ctx.destination); src.start(0);
+  } catch(e){}
+}
+['pointerdown','touchend','keydown'].forEach(ev => document.addEventListener(ev, () => { if (!audio.unlocked || (audio.ctx && audio.ctx.state !== 'running') || (audio.tag && audio.tag.paused)){ audio.unlocked = true; unlockAudio(); } }, {capture:true, passive:true}));
+document.addEventListener('visibilitychange', () => { if (document.hidden){ try { audio.tag && audio.tag.pause(); } catch(e){} } });
 function actx(){
   if (!audio.ctx){ audio.ctx = new (window.AudioContext||window.webkitAudioContext)(); }
-  if (audio.ctx.state === 'suspended' && audio.ctx.resume) audio.ctx.resume();
+  if (audio.ctx.state !== 'running' && audio.ctx.resume) audio.ctx.resume();
   return audio.ctx;
 }
 function ksBuffer(ctx, midi, dur){
