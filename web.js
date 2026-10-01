@@ -14,7 +14,7 @@
   let inviteToken = params.get('convite') || sessionStorage.getItem('fluid.convite') || '';
   if (params.get('convite')) { sessionStorage.setItem('fluid.convite', inviteToken); history.replaceState(null, '', location.pathname); }
 
-  let inviteErr = '';
+  let inviteErr = '', inviteOk = false;
   let session = null, me = null, notebooks = [], current = null, features = { spotify:false, ai:false };
   let resolveDb; const dbReady = new Promise(r => resolveDb = r);
 
@@ -31,6 +31,14 @@
   .fx-err{color:var(--bad);font-size:13.5px;min-height:18px}
   .fx-ok{color:var(--ok);font-size:13.5px}
   .fx-link{border:0;background:none;padding:6px 0;color:var(--accentInk);font-weight:600;text-decoration:underline;text-underline-offset:3px;align-self:flex-start}
+  .fx-invite{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:20px;background:var(--glass,var(--surface));border:1px solid var(--glassEdgeSoft,var(--line));border-top-color:var(--glassEdge,var(--line))}
+  .fx-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:999px;background:var(--glass2,var(--surface2));border:1px solid var(--line)}
+  .fx-seg button{height:38px;border:0;border-radius:999px;background:transparent;font-size:13px;font-weight:600;color:var(--muted);padding:0 8px}
+  .fx-seg button[aria-pressed="true"]{background:var(--accent);color:var(--onAccent);box-shadow:0 6px 16px -6px var(--glow)}
+  .fx-share{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .fx-share .btn{flex:1;text-decoration:none}
+  .fx-wa{background:#25D366!important;color:#fff!important;border-color:transparent!important}
+  .fx-note{margin-top:8px!important;font-size:12.5px!important}
   .fx-inv{padding:12px 14px;border-radius:16px;background:var(--glowSoft);color:var(--accentInk);font-size:14px;font-weight:500}
   .fx-acc{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:19;display:flex;align-items:center;gap:8px;height:44px;padding:0 14px 0 6px;border-radius:999px;border:1px solid var(--glassEdge,var(--line));background:var(--glass,var(--surface));box-shadow:var(--glassHi,none),0 10px 30px -10px rgba(20,22,60,.3);-webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7);font-size:13px;font-weight:600;max-width:calc(100% - 32px)}
   .fx-acc i{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--onAccent);font-style:normal;font-family:var(--fDisplay);font-size:13px;flex-shrink:0}
@@ -61,6 +69,8 @@
     if (/Email not confirmed/i.test(m)) return 'Confirme o e-mail pelo link que chegou na sua caixa de entrada.';
     if (/invite_used/.test(m)) return 'Esse convite já foi usado por outra pessoa. Peça um novo.';
     if (/invite_not_found/.test(m)) return 'Convite não encontrado. Peça um novo link.';
+    if (/invite_self/.test(m)) return 'Esse convite foi criado por você. Mande o link para a outra pessoa abrir.';
+    if (/no_notebook/.test(m)) return 'Sua conta ainda não tem caderno. Recarregue a página e abra o link de novo.';
     if (/invite_expired/.test(m)) return 'Esse convite venceu (vale 14 dias). Peça um novo link.';
     return 'Não deu certo agora. Confira a conexão e tente de novo.';
   };
@@ -69,7 +79,9 @@
   async function inviteBanner(){
     if (!inviteToken || !sb) return '';
     try { const { data } = await sb.rpc('invite_info', { t: inviteToken }); const r = data && data[0];
-      if (r && !r.accepted) return `<div class="fx-inv">${esc(r.owner_name||'Um aluno')} convidou você para o ${esc(r.notebook_name)}. Entre ou crie sua conta para abrir.</div>`;
+      if (r && !r.accepted) return r.kind==='connect'
+        ? `<div class="fx-inv">${esc(r.inviter_name||'Seu professor')} quer acompanhar seu caderno de violão no Fluid. Entre ou crie sua conta para aceitar.</div>`
+        : `<div class="fx-inv">${esc(r.owner_name||'Um aluno')} convidou você para colaborar no ${esc(r.notebook_name)}. Entre ou crie sua conta para abrir.</div>`;
     } catch(e){}
     return '';
   }
@@ -110,7 +122,7 @@
     const { data: p } = await sb.from('profiles').select('id,name,email').eq('id', uid).maybeSingle();
     me = p || { id: uid, name: session.user.user_metadata?.name || session.user.email, email: session.user.email };
     if (inviteToken){
-      try { const { data } = await sb.rpc('accept_invite', { t: inviteToken }); if (data) localStorage.setItem(LSNB, data); }
+      try { const { data } = await sb.rpc('accept_invite', { t: inviteToken }); if (data){ localStorage.setItem(LSNB, data); inviteOk = true; } }
       catch(e){ inviteErr = errText(e); }
       inviteToken = ''; sessionStorage.removeItem('fluid.convite');
     }
@@ -123,6 +135,7 @@
     try { const r = await fetch('/api/config'); if (r.ok) features = await r.json(); } catch(e){}
     hide(); renderAccBtn();
     resolveDb(makeDb(current.id));
+    if (inviteOk && !inviteErr){ inviteOk = false; show(`${brand}<h2>Convite aceito</h2><p>Pronto, vocês estão conectados. Tudo o que um anotar no caderno aparece para o outro na hora. Para trocar de caderno, toque no seu nome no canto da tela.</p><button class="btn primary" type="button" id="fx-close">Abrir o caderno</button>`); over.onclick = e => { if (e.target.closest('#fx-close')) hide(); }; }
     if (inviteErr){ show(`${brand}<h2>Convite</h2><p>${esc(inviteErr)}</p><button class="btn primary" type="button" id="fx-close">Continuar</button>`); over.onclick = e => { if (e.target.closest('#fx-close')) hide(); }; inviteErr = ''; }
   }
   function renderAccBtn(){
@@ -133,6 +146,13 @@
   }
   function switchTo(id){ localStorage.setItem(LSNB, id); location.reload(); }
 
+  const ownNotebook = () => notebooks.find(n => n.role==='owner');
+  function helpFor(k){ return k==='join'
+    ? 'Seu professor abre o link, cria a conta e passa a ver e editar o seu caderno: músicas, aulas e treinos.'
+    : 'Para professores: o aluno abre o link, entra com a conta dele e você passa a acompanhar e editar o caderno dele. Ele aparece na sua lista de cadernos.'; }
+  function inviteMsg(k, link){ return k==='join'
+    ? `Oi! Estou anotando minhas músicas e aulas de violão no Fluid. Abre este link para ver e editar meu caderno comigo: ${link}`
+    : `Oi! Vou acompanhar seus treinos de violão pelo Fluid. Abre este link e entra com sua conta para eu ver e anotar as músicas no seu caderno: ${link}`; }
   async function showAccount(msg=''){
     const isOwner = current.role==='owner';
     let members = [];
@@ -143,25 +163,41 @@
       <div class="fx-list">${notebooks.map(n=>`<button type="button" class="fx-row${n.id===current.id?' on':''}" data-nb="${esc(n.id)}"><div class="grow"><b>${esc(n.name)}</b><small>${n.role==='owner'?'seu caderno':'você é professor aqui'}</small></div></button>`).join('')}</div>
       <div class="fx-sec">Quem tem acesso a este caderno</div>
       <div class="fx-list">${members.map(m=>`<div class="fx-row"><div class="grow"><b>${esc(m.profiles?.name||'Sem nome')}</b><small>${m.role==='owner'?'aluno, dono do caderno':'professor'}${m.user_id===me.id?' · você':''}</small></div>${isOwner && m.role!=='owner' ? `<button class="btn ghost danger" type="button" data-rm="${esc(m.user_id)}">Remover</button>`:''}</div>`).join('')}</div>
-      ${isOwner ? `<div class="fx-sec">Convidar professor</div>
-        <p>Gere um link e mande para ele no WhatsApp. Ele cria a conta pelo link e passa a ver e editar este caderno.</p>
+      <div class="fx-sec">Convidar para colaborar</div>
+      <div class="fx-invite">
+        <div class="fx-seg" role="group" aria-label="Quem você quer convidar">
+          <button type="button" data-ik="join" aria-pressed="true">Convidar meu professor</button>
+          <button type="button" data-ik="connect" aria-pressed="false">Convidar um aluno</button>
+        </div>
+        <p id="fx-ihelp">${helpFor('join')}</p>
         <div id="fx-invbox">${msg}</div>
-        <button class="btn primary" type="button" id="fx-inv">Gerar link de convite</button>` : ''}
+        <button class="btn primary" type="button" id="fx-inv">Gerar link de convite</button>
+      </div>
       <button class="btn" type="button" id="fx-close">Fechar</button>`);
+    let ik = 'join';
     over.onclick = async e => {
       const t = e.target.closest('button'); if (!t){ if (e.target === over) hide(); return; }
       if (t.id==='fx-close') hide();
       if (t.id==='fx-out'){ await sb.auth.signOut(); localStorage.removeItem(LSNB); location.reload(); }
       if (t.dataset.nb && t.dataset.nb !== current.id) switchTo(t.dataset.nb);
       if (t.dataset.rm){ if (t.dataset.armed){ await sb.from('notebook_members').delete().eq('notebook_id', current.id).eq('user_id', t.dataset.rm); showAccount(); } else { t.dataset.armed='1'; t.textContent='Confirmar'; } }
+      if (t.dataset.ik){ ik = t.dataset.ik; over.querySelectorAll('[data-ik]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ik===ik))); over.querySelector('#fx-ihelp').textContent = helpFor(ik); over.querySelector('#fx-invbox').innerHTML = ''; const g = over.querySelector('#fx-inv'); g.hidden = false; g.disabled = false; }
       if (t.id==='fx-inv'){
+        const own = ownNotebook();
+        if (ik==='join' && !own){ over.querySelector('#fx-invbox').innerHTML = `<p class="fx-err">Não encontrei o seu caderno.</p>`; return; }
         t.disabled = true;
-        const { data, error } = await sb.from('invites').insert({ notebook_id: current.id }).select('token').single();
+        const row = ik==='join' ? { notebook_id: own.id, kind: 'join' } : { kind: 'connect' };
+        const { data, error } = await sb.from('invites').insert(row).select('token').single();
         if (error){ t.disabled = false; over.querySelector('#fx-invbox').innerHTML = `<p class="fx-err">${esc(errText(error))}</p>`; return; }
         const link = location.origin + location.pathname + '?convite=' + data.token;
-        over.querySelector('#fx-invbox').innerHTML = `<div class="fx-copy"><input class="inp" id="fx-invlink" readonly value="${esc(link)}" aria-label="Link de convite"><button class="btn" type="button" id="fx-cp">Copiar</button></div><p style="margin-top:8px">Cada link vale para uma pessoa.</p>`;
+        const text = inviteMsg(ik, link);
+        over.querySelector('#fx-invbox').innerHTML = `<div class="fx-copy"><input class="inp" id="fx-invlink" readonly value="${esc(link)}" aria-label="Link de convite"><button class="btn" type="button" id="fx-cp">Copiar</button></div>
+          <div class="fx-share"><a class="btn fx-wa" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">Mandar no WhatsApp</a>${navigator.share ? `<button class="btn" type="button" id="fx-sh">Compartilhar</button>` : ''}</div>
+          <p class="fx-note">Cada link vale para uma pessoa e vence em 14 dias.</p>`;
+        over.querySelector('#fx-invbox').dataset.text = text;
         t.hidden = true;
       }
+      if (t.id==='fx-sh'){ try { await navigator.share({ title: 'Convite para o Fluid', text: over.querySelector('#fx-invbox').dataset.text }); } catch(err){} }
       if (t.id==='fx-cp'){ const inp = over.querySelector('#fx-invlink'); try { await navigator.clipboard.writeText(inp.value); t.textContent = 'Copiado'; } catch(err){ inp.select(); } }
     };
   }
