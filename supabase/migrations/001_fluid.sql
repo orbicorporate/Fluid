@@ -2,8 +2,6 @@
 -- Cada caderno guarda documentos JSON (músicas, aulas, progresso, pastilhas, recordes)
 -- na tabela items. Quem é membro do caderno lê e escreve tudo.
 
-create extension if not exists pgcrypto;
-
 -- Perfis --------------------------------------------------------------------
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -22,7 +20,7 @@ create table if not exists public.notebooks (
 
 create table if not exists public.notebook_members (
   notebook_id uuid not null references public.notebooks(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
   role text not null check (role in ('owner','teacher')),
   created_at timestamptz not null default now(),
   primary key (notebook_id, user_id)
@@ -42,7 +40,7 @@ create table if not exists public.items (
 
 -- Convites ---------------------------------------------------------------------
 create table if not exists public.invites (
-  token text primary key default encode(gen_random_bytes(12), 'hex'),
+  token text primary key default replace(gen_random_uuid()::text, '-', ''),
   notebook_id uuid not null references public.notebooks(id) on delete cascade,
   role text not null default 'teacher' check (role in ('teacher')),
   created_by uuid not null default auth.uid() references auth.users(id) on delete cascade,
@@ -50,6 +48,8 @@ create table if not exists public.invites (
   accepted_by uuid references auth.users(id) on delete set null,
   accepted_at timestamptz
 );
+create index if not exists invites_notebook_idx on public.invites(notebook_id);
+create index if not exists notebooks_owner_idx on public.notebooks(owner_id);
 
 -- Funções de acesso ------------------------------------------------------------
 create or replace function public.is_member(nb uuid) returns boolean
@@ -102,12 +102,29 @@ begin
   select * into inv from invites where token = t for update;
   if not found then raise exception 'invite_not_found'; end if;
   if inv.accepted_by is not null and inv.accepted_by <> auth.uid() then raise exception 'invite_used'; end if;
+  if inv.accepted_by is null and inv.created_at < now() - interval '14 days' then raise exception 'invite_expired'; end if;
   insert into notebook_members (notebook_id, user_id, role) values (inv.notebook_id, auth.uid(), inv.role)
     on conflict (notebook_id, user_id) do nothing;
   update invites set accepted_by = auth.uid(), accepted_at = now() where token = t and accepted_by is null;
   return inv.notebook_id;
 end $$;
 
+create or replace function public.items_stamp() returns trigger
+language plpgsql set search_path = public as $$
+begin new.updated_by := auth.uid(); new.updated_at := now(); return new; end $$;
+drop trigger if exists items_stamp on public.items;
+create trigger items_stamp before insert or update on public.items for each row execute function public.items_stamp();
+
+revoke execute on function public.is_member(uuid) from public, anon;
+revoke execute on function public.is_owner(uuid) from public, anon;
+revoke execute on function public.shares_notebook(uuid) from public, anon;
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+revoke execute on function public.items_stamp() from public, anon, authenticated;
+revoke execute on function public.invite_info(text) from public;
+revoke execute on function public.accept_invite(text) from public, anon;
+grant execute on function public.is_member(uuid) to authenticated;
+grant execute on function public.is_owner(uuid) to authenticated;
+grant execute on function public.shares_notebook(uuid) to authenticated;
 grant execute on function public.invite_info(text) to anon, authenticated;
 grant execute on function public.accept_invite(text) to authenticated;
 
@@ -120,10 +137,10 @@ alter table public.invites enable row level security;
 
 drop policy if exists profiles_select on public.profiles;
 create policy profiles_select on public.profiles for select to authenticated
-  using (id = auth.uid() or public.shares_notebook(id));
+  using (id = (select auth.uid()) or public.shares_notebook(id));
 drop policy if exists profiles_update on public.profiles;
 create policy profiles_update on public.profiles for update to authenticated
-  using (id = auth.uid()) with check (id = auth.uid());
+  using (id = (select auth.uid())) with check (id = (select auth.uid()));
 
 drop policy if exists notebooks_select on public.notebooks;
 create policy notebooks_select on public.notebooks for select to authenticated
@@ -137,18 +154,19 @@ create policy members_select on public.notebook_members for select to authentica
   using (public.is_member(notebook_id));
 drop policy if exists members_delete on public.notebook_members;
 create policy members_delete on public.notebook_members for delete to authenticated
-  using ((public.is_owner(notebook_id) and role <> 'owner') or (user_id = auth.uid() and role <> 'owner'));
+  using (role <> 'owner' and (public.is_owner(notebook_id) or user_id = (select auth.uid())));
 
 drop policy if exists items_all on public.items;
 create policy items_all on public.items for all to authenticated
   using (public.is_member(notebook_id)) with check (public.is_member(notebook_id));
+
 
 drop policy if exists invites_select on public.invites;
 create policy invites_select on public.invites for select to authenticated
   using (public.is_owner(notebook_id));
 drop policy if exists invites_insert on public.invites;
 create policy invites_insert on public.invites for insert to authenticated
-  with check (public.is_owner(notebook_id) and created_by = auth.uid());
+  with check (public.is_owner(notebook_id) and created_by = (select auth.uid()));
 drop policy if exists invites_delete on public.invites;
 create policy invites_delete on public.invites for delete to authenticated
   using (public.is_owner(notebook_id));

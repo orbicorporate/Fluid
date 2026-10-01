@@ -60,6 +60,7 @@
     if (/Email not confirmed/i.test(m)) return 'Confirme o e-mail pelo link que chegou na sua caixa de entrada.';
     if (/invite_used/.test(m)) return 'Esse convite já foi usado por outra pessoa. Peça um novo.';
     if (/invite_not_found/.test(m)) return 'Convite não encontrado. Peça um novo link.';
+    if (/invite_expired/.test(m)) return 'Esse convite venceu (vale 14 dias). Peça um novo link.';
     return 'Não deu certo agora. Confira a conexão e tente de novo.';
   };
 
@@ -179,6 +180,7 @@
       (data||[]).forEach(r => col(r.collection).set(r.id, r.data));
       sb.channel('items-' + nb).on('postgres_changes', { event: '*', schema: 'public', table: 'items', filter: 'notebook_id=eq.' + nb }, p => {
         const r = p.new && p.new.collection ? p.new : p.old; if (!r || !r.collection) return;
+        if (r.notebook_id && r.notebook_id !== nb) return;
         if (p.eventType === 'DELETE') col(r.collection).delete(r.id); else col(r.collection).set(r.id, p.new.data);
         emit(r.collection);
       }).subscribe();
