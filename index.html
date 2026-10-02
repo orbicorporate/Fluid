@@ -791,6 +791,18 @@ body{background-attachment:fixed}
 .metro-dots i.one.on{background:var(--ok)}
 .metro-bot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .metro-bot .seg button{min-width:44px}
+
+/* metrônomo recolhível */
+.metro.closed{padding:10px 12px 10px 14px;gap:0}
+.metro-t{border:0;background:none;padding:0;color:inherit;text-align:left;flex:1;min-width:0;cursor:pointer}
+.metro-t>span:not(.ph-ico){flex:1;min-width:0}
+.metro-chev{display:flex;width:30px;height:30px;border-radius:50%;align-items:center;justify-content:center;color:var(--muted);transition:transform .25s cubic-bezier(.2,.8,.2,1);flex-shrink:0}
+.metro-chev svg{width:18px;height:18px}
+.metro:not(.closed) .metro-chev{transform:rotate(180deg)}
+.metro.closed .metro-play{width:44px;height:44px}
+.metro.closed .metro-play svg{width:18px;height:18px}
+.metro-panel{display:flex;flex-direction:column;gap:12px;animation:mOpen .28s cubic-bezier(.2,.8,.2,1) both}
+@keyframes mOpen{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 </style>
 
 <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -1919,14 +1931,16 @@ Mensagem:
 /* ---------- practice mode: metronome + chord follow ---------- */
 
 /* ---------- metrônomo livre (home) ---------- */
-const metro = { bpm: 80, beats: 4, playing:false, beat:-1, taps:[] };
+const metro = { bpm: 80, beats: 4, playing:false, beat:-1, taps:[], open:false };
+try { metro.open = localStorage.getItem('fluid.metro.open') === '1'; } catch(e){}
 try { const m = JSON.parse(localStorage.getItem('fluid.metro')||'null'); if (m){ if (m.bpm>=30&&m.bpm<=240) metro.bpm = m.bpm; if ([2,3,4,6].includes(m.beats)) metro.beats = m.beats; } } catch(e){}
 const metroSave = () => { try { localStorage.setItem('fluid.metro', JSON.stringify({bpm:metro.bpm, beats:metro.beats})); } catch(e){} };
 const tempoName = b => b<60?'Bem lento':b<76?'Lento':b<108?'Moderado':b<132?'Animado':b<168?'Rápido':'Muito rápido';
 function metroHTML(){
-  return `<section class="metro" id="metro" aria-label="Metrônomo">
-    <div class="metro-top"><div class="metro-t"><span class="ph-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l4 18H5L9 3Z"/><path d="M12 15l5-8"/></svg></span><span><b>Metrônomo</b><small>Treino livre, sem música</small></span></div>
+  return `<section class="metro${metro.open?'':' closed'}" id="metro" aria-label="Metrônomo">
+    <div class="metro-top"><button class="metro-t" data-act="metro-toggle" aria-expanded="${metro.open}" aria-controls="metro-panel"><span class="ph-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l4 18H5L9 3Z"/><path d="M12 15l5-8"/></svg></span><span><b>Metrônomo</b><small>${metro.open ? 'Treino livre, sem música' : `<span id="metro-sum">${metro.bpm}</span> bpm · ${metro.beats===6?'6/8':metro.beats+'/4'}`}</small></span><i class="metro-chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></i></button>
       <button class="metro-play${metro.playing?' on':''}" data-act="metro-play" aria-label="${metro.playing?'Parar':'Tocar'} metrônomo">${metro.playing?I.pause:I.play}</button></div>
+    ${metro.open ? `<div class="metro-panel" id="metro-panel">
     <div class="metro-mid">
       <button class="metro-step" data-act="metro-minus" aria-label="Diminuir 1 bpm">${I.minus}</button>
       <div class="metro-bpm"><strong id="metro-n">${metro.bpm}</strong><small><span>bpm</span> · <span id="metro-name">${tempoName(metro.bpm)}</span></small></div>
@@ -1937,11 +1951,12 @@ function metroHTML(){
     <div class="metro-bot">
       <div class="seg" role="group" aria-label="Tempos por compasso">${[2,3,4,6].map(n=>`<button data-mbeats="${n}" aria-pressed="${metro.beats===n}">${n===6?'6/8':n+'/4'}</button>`).join('')}</div>
       <button class="btn" data-act="metro-tap" aria-label="Bater o andamento">Bater tempo</button>
-    </div>
+    </div></div>` : ''}
   </section>`;
 }
 function metroSync(){
   const n = document.getElementById('metro-n'); if (n) n.textContent = metro.bpm;
+  const sm = document.getElementById('metro-sum'); if (sm) sm.textContent = metro.bpm;
   const nm = document.getElementById('metro-name'); if (nm) nm.textContent = tempoName(metro.bpm);
   const r = document.getElementById('metro-bpm'); if (r && +r.value !== metro.bpm) r.value = metro.bpm;
 }
@@ -2515,6 +2530,7 @@ app.addEventListener('click', e => {
   if (a==='hub') return window.FluidHub && window.FluidHub.open();
   if (a==='theme') return toggleTheme();
   if (a==='q-add') return addQuestion();
+  if (a==='metro-toggle'){ metro.open = !metro.open; try { localStorage.setItem('fluid.metro.open', metro.open?'1':'0'); } catch(e){} return metroUI(); }
   if (a==='metro-play') return metro.playing ? metroStop() : metroStart();
   if (a==='metro-minus') return metroSet(metro.bpm-1);
   if (a==='metro-plus') return metroSet(metro.bpm+1);
