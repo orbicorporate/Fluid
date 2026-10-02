@@ -938,6 +938,19 @@ body{background-attachment:fixed}
 .al-x svg{width:15px;height:15px}
 @media (max-width:620px){.along{top:calc(62px + env(safe-area-inset-top,0px));right:12px;width:min(250px,64vw);border-radius:18px}.al-bar .seg button{padding:0 8px;font-size:12px}}
 
+/* ===== lição: prazo e comentário ===== */
+.due-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.due-row label{font-size:13px;font-weight:600;color:var(--muted)}
+.due-row .inp{height:40px;max-width:180px}
+.due-row .hint{font-size:12px}
+.hw-item{display:flex;flex-direction:column;gap:6px}
+.hw-item .check-row{align-items:flex-start}
+.due{font-weight:700;color:var(--accentInk)}.due.late{color:#DC2626}
+.hw-rep-b{margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
+.hw-rep-b svg{width:15px;height:15px}
+.hw-reply{margin:0 0 0 36px;padding:8px 12px;border-radius:12px;background:var(--glowSoft);font-size:13px;color:var(--text)}
+.hw-rep-f{display:flex;gap:8px;margin-left:36px}.hw-rep-f .inp{flex:1;min-width:0;height:40px;border-radius:12px;padding:0 12px}
+
 /* @@END-EXTRAS-CSS@@ */
 </style>
 
@@ -2500,7 +2513,8 @@ function openLesson(l){
 function readLesson(){
   const L = led.l; const g = id => document.getElementById(id);
   if (!g('le-date')) return; L.date = g('le-date').value || todayLocal(); L.summary = g('le-sum').value;
-  ['homework','questions'].forEach(k => { L[k] = [...layer.querySelectorAll(`[data-li="${k}"]`)].map((inp,i) => ({t:inp.value, done:!!(L[k][i]&&L[k][i].done)})); });
+  ['homework','questions'].forEach(k => { L[k] = [...layer.querySelectorAll(`[data-li="${k}"]`)].map((inp,i) => ({...(L[k][i]||{}), t:inp.value, done:!!(L[k][i]&&L[k][i].done)})); });
+  if (g('le-due')) L.hwDue = g('le-due').value || '';
 }
 function renderLesson(){
   const L = led.l; const p = dateParts(L.date);
@@ -2521,7 +2535,8 @@ function renderLesson(){
       <div class="field"><span class="lbl" id="le-songs-l">Músicas vistas na aula</span>
         ${songs.length ? `<div class="tagbar" role="group" aria-labelledby="le-songs-l" style="margin:0">${songs.map(s=>`<button type="button" class="tag${L.songs.includes(s.id)?' on':''}" style="--tc:${hueOf(s)}" data-lsong="${esc(s.id)}" aria-pressed="${L.songs.includes(s.id)}"><i class="dot" aria-hidden="true"></i>${esc(s.title||'Sem título')}</button>`).join('')}</div>` : `<p class="hint" style="margin:0">Cadastre músicas para ligar à aula.</p>`}</div>
       <div class="field"><label for="le-sum">O que foi passado</label><textarea class="inp" id="le-sum" rows="4" placeholder="Ex.: batida da Nomahe, trocar Em para G sem parar, capo na 2ª">${esc(L.summary)}</textarea></div>
-      <div class="field"><span class="lbl">Lição de casa</span>${listUI('homework','Ex.: 5 min de troca Em e Am por dia')}</div>
+      <div class="field"><span class="lbl">Lição de casa</span>${listUI('homework','Ex.: 5 min de troca Em e Am por dia')}
+        <div class="due-row"><label for="le-due">Prazo</label><input class="inp" id="le-due" type="date" value="${esc(L.hwDue||'')}"><span class="hint">até quando fazer a lição (opcional)</span></div></div>
       <div class="field"><span class="lbl">Dúvidas para a próxima aula</span>${listUI('questions','Ex.: como abafar na batida do reggae?')}</div>
       ${!led.isNew ? (led.confirm ? `<div class="confirm">Apagar esta aula? Não dá para desfazer.<span style="flex:1"></span><button type="button" class="btn ghost" data-act="le-del-no">Cancelar</button><button type="button" class="btn danger" data-act="le-del-yes">${I.trash}Apagar</button></div>` : `<button type="button" class="btn ghost danger" data-act="le-del" style="align-self:flex-start">${I.trash}Apagar aula</button>`) : ''}
     </form>
@@ -2561,7 +2576,11 @@ function renderAulas(){
   app.innerHTML = headerHTML() + `
   ${lessons.length ? `<div class="aulas-top">
     <section class="panel"><div class="sec-h"><h3 class="ph"><span class="ph-ico hw" aria-hidden="true">${I.note}</span>Lição de casa pendente</h3><span class="chip ${open.length?'warn':'ok'}">${open.length?open.length+' '+(open.length===1?'item':'itens'):'tudo feito'}</span></div>
-      ${open.length ? `<div class="check-list">${open.map(({l,i,h})=>`<div class="check-row"><button class="check" data-tcheck="${esc(l.id)}:homework:${i}" aria-label="Marcar como feito"></button><span class="check-t">${esc(h.t)}<small>aula de ${dateParts(l.date).d} ${dateParts(l.date).mon}</small></span></div>`).join('')}</div>` : `<p class="hint" style="margin:0">Nada pendente. Bom treino!</p>`}</section>
+      ${open.length ? `<div class="check-list">${open.map(({l,i,h})=>{ const due = l.hwDue, late = due && due < todayLocal(), dp = due && dateParts(due); const rk = l.id+':'+i;
+        return `<div class="hw-item"><div class="check-row"><button class="check" data-tcheck="${esc(l.id)}:homework:${i}" aria-label="Marcar como feito"></button><span class="check-t">${esc(h.t)}<small>aula de ${dateParts(l.date).d} ${dateParts(l.date).mon}${due?` · <b class="due${late?' late':''}">${late?'atrasada, era ':'até '}${dp.d} ${dp.mon}</b>`:''}</small></span>
+          <button class="hw-rep-b" data-act="hw-reply" data-k="${esc(rk)}" aria-label="Comentar a lição"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg></button></div>
+          ${h.reply ? `<p class="hw-reply"><b>${esc(h.replyBy||'Comentário')}:</b> ${esc(h.reply)}</p>` : ''}
+          ${view.hwReply===rk ? `<div class="hw-rep-f"><input class="inp" id="hw-rep-in" placeholder="Ex.: fiz, mas a troca para o F ainda trava" value="${esc(h.reply||'')}" maxlength="200"><button class="btn primary" data-act="hw-reply-save" data-k="${esc(rk)}">Enviar</button></div>` : ''}</div>`; }).join('')}</div>` : `<p class="hint" style="margin:0">Nada pendente. Bom treino!</p>`}</section>
     <section class="panel ask"><div class="sec-h"><h3 class="ph"><span class="ph-ico" aria-hidden="true">?</span>Levar na próxima aula</h3>${qs.length?`<span class="chip">${qs.length} ${qs.length===1?'dúvida':'dúvidas'}</span>`:''}</div>
       ${qs.length ? `<div class="check-list">${qs.map(({q,i})=>`<div class="check-row"><button class="check" data-tcheck="${esc(last.id)}:questions:${i}" aria-label="Marcar como respondida" title="Marcar como respondida"></button><span class="check-t">${esc(q.t)}</span></div>`).join('')}</div>` : `<p class="hint ask-hint">Travou em alguma coisa no treino? Escreva aqui e pergunte ao professor na próxima aula.</p>`}
       <div class="ask-add"><input class="inp" id="q-new" placeholder="Ex.: como abafar a corda no ritmo?" maxlength="160" aria-label="Nova dúvida para a próxima aula" enterkeyhint="done"><button class="ask-btn" data-act="q-add" aria-label="Anotar dúvida">${I.plus}</button></div>
@@ -3081,6 +3100,11 @@ app.addEventListener('click', e => {
   if (a==='theme') return toggleTheme();
   if (a==='q-add') return addQuestion();
   if (a==='tuner') return openTuner();
+  if (a==='hw-reply'){ view.hwReply = view.hwReply===t.dataset.k ? null : t.dataset.k; render(); const i = document.getElementById('hw-rep-in'); i && i.focus(); return; }
+  if (a==='hw-reply-save'){ const [lid, idx] = t.dataset.k.split(':'); const l = lessons.find(x=>x.id===lid); const v = (document.getElementById('hw-rep-in')||{}).value||''; if (!l) return;
+    const me = window.FluidWeb ? window.FluidWeb.me().name.split(' ')[0] : 'Comentário';
+    const hw = (l.homework||[]).map((x,j) => j===+idx ? {...x, reply: v.trim(), replyBy: me, replyAt: new Date().toISOString()} : {...x});
+    saveLesson({...l, homework: hw}); view.hwReply = null; render(); toast('Comentário salvo na lição'); return; }
   if (a==='metro-toggle'){ metro.open = !metro.open; try { localStorage.setItem('fluid.metro.open', metro.open?'1':'0'); } catch(e){} return metroUI(); }
   if (a==='metro-play') return metro.playing ? metroStop() : metroStart();
   if (a==='metro-minus') return metroSet(metro.bpm-1);

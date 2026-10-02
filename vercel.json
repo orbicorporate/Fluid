@@ -2,7 +2,29 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "headers": [
-    { "source": "/(web|config)\\.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
-    { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+    {
+      "source": "/(web|config)\\.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/p/:slug",
+      "destination": "/p.html"
+    }
   ]
 }

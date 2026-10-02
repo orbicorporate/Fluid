@@ -143,7 +143,7 @@
         ${st.view ? `<button class="hb-icon" data-h="back" aria-label="Voltar">${IC.back}</button>` : `<div class="hb-me"><i style="--c:${colorFor(W().me().id)}">${esc(initials(W().me().name))}</i><span><b>${esc(W().me().name)}</b><small>${esc(W().current().name)}</small></span></div>`}
         <button class="hb-icon" data-h="close" aria-label="Fechar">${IC.close}</button>
       </header>
-      ${st.view ? '' : `<nav class="hb-tabs" role="tablist">${tabs.map(([k,l]) => `<button role="tab" data-tab="${k}" aria-selected="${st.tab===k}">${l}${k==='financeiro' && c.late ? `<span class="hb-dot bad">${c.late}</span>` : k==='financeiro' && c.soon ? `<span class="hb-dot warn">${c.soon}</span>` : ''}</button>`).join('')}</nav>`}
+      ${st.view ? '' : `<nav class="hb-tabs" role="tablist">${tabs.map(([k,l]) => `<button role="tab" data-tab="${k}" aria-selected="${st.tab===k}">${l}${k==='financeiro' && c.late ? `<span class="hb-dot bad">${c.late}</span>` : k==='financeiro' && c.soon ? `<span class="hb-dot warn">${c.soon}</span>` : ''}${k==='conta' && (st.leads||[]).some(l => !l.seen) ? `<span class="hb-dot bad">${st.leads.filter(l => !l.seen).length}</span>` : ''}</button>`).join('')}</nav>`}
       <div class="hb-body">${body()}</div>
       ${st.flash ? `<div class="hb-flash" role="status">${esc(st.flash)}</div>` : ''}`;
     const nb = sheet.querySelector('.hb-body'); if (nb && keep && !st.resetScroll) nb.scrollTop = y; st.resetScroll = false;
@@ -615,10 +615,11 @@
           ${m.user_id===me.id && m.role!=='owner' ? `<button class="btn ghost danger sm" data-h="leave">${st.armLeave ? 'Confirmar' : 'Sair da pasta'}</button>` : ''}</div>`).join('')}</div>
         ${cur.role==='owner' ? `<button class="btn" data-h="invite" data-id="${cur.id}">${IC.link}Convidar para esta pasta</button>` : ''}
       </section>
+      ${pageBox()}
       <button class="btn ghost danger" data-h="signout">Sair da conta</button>`;
   }
 
-  const VIEWS = { send: viewSend, plan: viewPlan, apply: viewApply, card: viewCard, payedit: viewPayEdit, nbform: viewFolderForm, invite: viewInvite, student: viewStudent, sform: viewStudentForm, extra: viewExtra, settings: viewSettings };
+  const VIEWS = { page: viewPage, send: viewSend, plan: viewPlan, apply: viewApply, card: viewCard, payedit: viewPayEdit, nbform: viewFolderForm, invite: viewInvite, student: viewStudent, sform: viewStudentForm, extra: viewExtra, settings: viewSettings };
 
   /* ---------- ações ---------- */
   const go = (view) => { view.back = st.view; st.view = view; st.resetScroll = true; draw(); const b = root.querySelector('.hb-body'); if (b) b.scrollTop = 0; };
@@ -755,6 +756,13 @@
       st.tmeta = { name: (fd.pix_name||'').trim(), city: (fd.pix_city||'').trim() }; try { await tSet('tmeta', 'pix', st.tmeta); } catch(e){}
       updateBadge(); back(); say('Ajustes salvos');
     });
+    if (kind==='page') return run(async () => {
+      const row = { user_id: W().me().id, slug: slugify(fd.slug), title: fd.title.trim(), bio: fd.bio.trim() || null, styles: fd.styles.trim() || null, price: fd.price.trim() || null, city: fd.city.trim() || null, whatsapp: fd.whatsapp.trim() || null, color: fd.color, published: !!fd.published, updated_at: new Date().toISOString() };
+      if (row.slug.length < 3) return say('O endereço precisa de pelo menos 3 letras');
+      const r = await sb.from('teacher_pages').upsert(row).select().single();
+      if (r.error){ if (/duplicate|unique/i.test(r.error.message)) return say('Esse endereço já está em uso. Escolha outro.'); throw r.error; }
+      st.page = r.data; back(); if (window.FLUID_CONFETTI && row.published) window.FLUID_CONFETTI(); say(row.published ? 'Página no ar!' : 'Página salva');
+    });
     if (kind==='plan') return run(async () => {
       const p = st.view.plan; const row = { name: fd.name.trim(), songs: p.songs||[], homework: fd.homework.split('\n').map(x=>x.trim()).filter(Boolean), summary: fd.summary.trim() };
       const id = p.id || rid('p'); await tSet('plans', id, row); const i = st.plans.findIndex(x => x.id===id); const full = { id, ...row }; if (i<0) st.plans.push(full); else st.plans[i] = full; back(); say('Plano salvo');
@@ -776,6 +784,7 @@
   const rid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   async function loadExtras(){
     try { const [att, plans, tm] = await Promise.all([tList('attendance'), tList('plans'), tList('tmeta')]);
+      try { const [pg, ld] = await Promise.all([W().sb.from('teacher_pages').select('*').maybeSingle(), W().sb.from('leads').select('*').order('created_at', { ascending:false })]); st.page = pg.error ? null : (pg.data || {}); st.pageErr = !!pg.error; st.leads = ld.error ? [] : (ld.data || []); } catch(e){ st.pageErr = true; }
       st.att = {}; att.forEach(a => st.att[a.id] = a); st.plans = plans.sort((a,b)=>String(a.name).localeCompare(b.name)); st.tmeta = tm.find(x => x.id==='pix') || {}; st.extrasLoaded = true; } catch(e){ st.extrasLoaded = true; }
   }
   async function songsOf(nbId){ const { data } = await W().sb.from('items').select('id,data').eq('notebook_id', nbId).eq('collection', 'songs'); return (data||[]).map(r => ({ id:r.id, ...r.data })); }
@@ -911,6 +920,10 @@
   async function teachClick(h, t, id, v){
     const sb = W().sb;
     switch (h){
+      case 'page-edit': go({ type:'page' }); return true;
+      case 'page-copy': { const i = root.querySelector('#hb-plink'); try { await navigator.clipboard.writeText(i.value); t.textContent = 'Copiado'; } catch(err){ i.select(); } return true; }
+      case 'lead-seen': { const l = st.leads.find(x => x.id===id); if (l && !l.seen){ l.seen = true; sb.from('leads').update({ seen:true }).eq('id', id).then(()=>{}); setTimeout(draw, 300); } return false; }
+      case 'lead-student': { const l = st.leads.find(x => x.id===id); if (l){ if (!l.seen){ l.seen = true; sb.from('leads').update({ seen:true }).eq('id', id).then(()=>{}); } go({ type:'sform', draft:{ name:l.name, phone:l.phone||'', notes:l.message||'' } }); } return true; }
       case 'wk': st.week = addDays(st.week || weekStart(today()), +v); draw(); return true;
       case 'att': { const [sid, date, r] = id.split('_'); const key = id; const cur = st.att[key];
         if (!v){ await run(async () => { await tDel('attendance', key); delete st.att[key]; draw(); say('Desfeito'); }); return true; }
@@ -936,6 +949,38 @@
   }
   function confettiHub(){ try { window.FLUID_CONFETTI && window.FLUID_CONFETTI(); } catch(e){} }
   const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch(e){} };
+
+
+  /* ---------- página pública do professor ---------- */
+  const slugify = t => String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40);
+  function pageBox(){
+    if (!st.extrasLoaded){ loadExtras().then(draw); return ''; }
+    if (st.pageErr) return `<section class="hb-box"><h3>${IC.link}Sua página de professor</h3><p class="hb-hint">Essa parte do Fluid ainda está sendo ativada.</p></section>`;
+    const p = st.page || {}, url = p.slug ? location.origin + '/p/' + p.slug : '', unseen = (st.leads||[]).filter(l => !l.seen).length;
+    return `<section class="hb-box page-box"><div class="hb-sec-h"><h3>${IC.link}Sua página de professor</h3>${p.published ? '<span class="hb-pill ok">No ar</span>' : '<span class="hb-pill muted">Rascunho</span>'}</div>
+      <p class="hb-hint">Uma página bonita para divulgar suas aulas. Quem se interessar deixa o contato e aparece aqui embaixo.</p>
+      ${url && p.published ? `<div class="hb-linkbox"><input class="inp" readonly value="${esc(url)}" id="hb-plink" aria-label="Link da sua página"><button class="btn" data-h="page-copy">Copiar</button></div><a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Ver minha página</a>` : ''}
+      <button class="btn${p.slug ? '' : ' primary'}" data-h="page-edit">${p.slug ? IC.edit + 'Editar página' : IC.plus + 'Criar minha página'}</button>
+      ${(st.leads||[]).length ? `<div class="hb-sec-h"><h3>Interessados${unseen ? ` <span class="hb-dot bad">${unseen}</span>` : ''}</h3></div>
+        <div class="hb-list tight">${st.leads.map(l => `<div class="hb-row static lead${l.seen?'':' new'}">${avatar(l.name, colorFor(l.id), 'sm')}<span class="hb-rmain"><b>${esc(l.name)}</b><small>${esc(l.message || l.phone || '')} · ${shortDate(l.created_at.slice(0,10))}</small></span>
+          ${l.phone ? `<a class="hb-icon sm wa" href="https://wa.me/${phoneDigits(l.phone)}?text=${encodeURIComponent('Oi ' + l.name.split(' ')[0] + '! Recebi seu interesse nas aulas de violão pelo Fluid. Vamos combinar um horário?')}" target="_blank" rel="noopener" data-h="lead-seen" data-id="${l.id}" aria-label="Chamar no WhatsApp">${IC.wa}</a>` : ''}
+          <button class="btn sm" data-h="lead-student" data-id="${l.id}">Virar aluno</button></div>`).join('')}</div>` : ''}
+    </section>`;
+  }
+  function viewPage(){
+    const p = st.page || {}, me = W().me();
+    return `<form class="hb-form" data-form="page"><h2>Sua página de professor</h2>
+      <label class="hb-field"><span>Título</span><input class="inp" name="title" maxlength="60" required value="${esc(p.title || 'Prof. ' + me.name.split(' ')[0] + ' · Aulas de violão')}"></label>
+      <label class="hb-field"><span>Endereço da página</span><div class="slug-row"><small>${esc(location.host)}/p/</small><input class="inp" name="slug" required minlength="3" maxlength="40" value="${esc(p.slug || slugify('prof ' + me.name))}"></div><small>Só letras minúsculas, números e hífen.</small></label>
+      <label class="hb-field"><span>Sobre você e suas aulas</span><textarea class="inp" name="bio" rows="5" maxlength="1200" placeholder="Toco há 15 anos, dou aula para iniciantes e intermediários, online e presencial...">${esc(p.bio||'')}</textarea></label>
+      <label class="hb-field"><span>Estilos (separe por vírgula)</span><input class="inp" name="styles" maxlength="200" value="${esc(p.styles||'')}" placeholder="MPB, Pop, Música indígena, Iniciantes"></label>
+      <div class="hb-two"><label class="hb-field"><span>Valor</span><input class="inp" name="price" maxlength="60" value="${esc(p.price||'')}" placeholder="A partir de R$ 180/mês"></label>
+        <label class="hb-field"><span>Cidade</span><input class="inp" name="city" maxlength="60" value="${esc(p.city||st.tmeta.city||'')}" placeholder="Sorocaba, SP"></label></div>
+      <label class="hb-field"><span>WhatsApp (botão na página)</span><input class="inp" name="whatsapp" type="tel" maxlength="30" value="${esc(p.whatsapp||'')}" placeholder="(15) 99999-9999"></label>
+      <div class="hb-field"><span>Cor</span><div class="hb-colors">${COLORS.map(c => `<button type="button" data-h="nbcolor" data-v="${c}" style="--c:${c}" aria-pressed="${c===(p.color||'#8B5CF6')}" aria-label="Cor ${c}"></button>`).join('')}</div><input type="hidden" name="color" value="${esc(p.color||'#8B5CF6')}"></div>
+      <label class="hb-check"><input type="checkbox" name="published" ${p.published || !p.slug ? 'checked' : ''}> Página no ar (qualquer pessoa com o link pode ver)</label>
+      <div class="hb-form-act"><button class="btn primary" type="submit">Salvar página</button><button class="btn ghost" type="button" data-h="back">Cancelar</button></div></form>`;
+  }
 
   /* ---------- estilos ---------- */
   const css = `
@@ -1196,6 +1241,9 @@
   .lib-dot{border-radius:50%;background:radial-gradient(circle at 34% 28%,color-mix(in srgb,var(--c) 45%,#fff),var(--c) 60%,color-mix(in srgb,var(--c) 70%,#000))}
   .plan-ic svg{width:18px;height:18px}
   .hb-row.static{gap:10px}
+  .slug-row{display:flex;align-items:center;gap:6px}.slug-row small{white-space:nowrap;font-size:13px!important;color:var(--muted)!important}.slug-row .inp{flex:1}
+  .lead.new{border-color:color-mix(in srgb,#EF4444 35%,transparent);background:color-mix(in srgb,#EF4444 5%,var(--glass,var(--surface)))}
+  .page-box .btn{align-self:flex-start}
   .hb-body>.hb-search{flex:none;height:44px}
   `;
   const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);

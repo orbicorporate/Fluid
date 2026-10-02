@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Aulas de violão · Fluid</title>
+<meta name="theme-color" content="#EDEFF6">
+<link rel="icon" href="/favicon-32.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Quicksand:wght@500&family=Sora:wght@500;600;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/config.js"></script>
+<style>
+:root{--bg:#EDEFF6;--text:#12131C;--muted:#50556A;--faint:#7A7F95;--card:rgba(255,255,255,.55);--edge:rgba(255,255,255,.85);--line:rgba(20,22,60,.09);--c:#8B5CF6;--b1:#C7D2FE;--b2:#FBCFE8;--b3:#A5F3FC;--op:.75}
+@media (prefers-color-scheme:dark){:root{--bg:#0B0706;--text:#F7F1ED;--muted:#BCA9A0;--faint:#8C7A71;--card:rgba(40,24,16,.5);--edge:rgba(255,214,190,.14);--line:rgba(255,214,190,.1);--b1:#5A1F0B;--b2:#0F4C63;--b3:#E2570F;--op:.35}}
+*{box-sizing:border-box}html,body{margin:0}
+body{min-height:100vh;background:var(--bg);color:var(--text);font-family:"Instrument Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.amb{position:fixed;inset:0;overflow:hidden;pointer-events:none}
+.amb i{position:absolute;border-radius:50%;filter:blur(90px);opacity:var(--op);animation:drift 18s ease-in-out infinite alternate}
+.amb i:nth-child(1){left:-120px;top:-80px;width:520px;height:440px;background:var(--b1)}
+.amb i:nth-child(2){right:-140px;top:220px;width:480px;height:420px;background:var(--b2);animation-delay:-6s}
+.amb i:nth-child(3){left:20%;bottom:-220px;width:600px;height:400px;background:var(--b3);animation-delay:-12s}
+@keyframes drift{to{transform:translate(40px,-30px) scale(1.08)}}
+main{position:relative;max-width:560px;margin:0 auto;padding:28px 16px 60px;display:flex;flex-direction:column;gap:16px}
+.brand{display:flex;align-items:center;gap:10px;font-family:"Quicksand",sans-serif;font-weight:500;font-size:20px;color:var(--muted);text-decoration:none}
+.brand svg{width:34px;height:34px}
+.card{padding:22px;border-radius:28px;background:var(--card);border:1px solid var(--edge);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 20px 50px -24px rgba(40,46,120,.3);-webkit-backdrop-filter:blur(30px) saturate(1.7);backdrop-filter:blur(30px) saturate(1.7);animation:up .6s cubic-bezier(.2,.8,.2,1) both}
+.card:nth-of-type(2){animation-delay:.08s}.card:nth-of-type(3){animation-delay:.16s}
+@keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.hero{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.av{width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Sora,sans-serif;font-weight:700;font-size:32px;color:#fff;background:radial-gradient(circle at 34% 28%,color-mix(in srgb,var(--c) 45%,#fff),var(--c) 55%,color-mix(in srgb,var(--c) 65%,#000));box-shadow:inset 0 -4px 10px rgba(0,0,0,.2),inset 0 3px 5px rgba(255,255,255,.35),0 18px 36px -12px var(--c);animation:float 5s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-6px)}}
+h1{font-family:Sora,sans-serif;font-size:26px;margin:4px 0 0;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:15px;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chips span{padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;background:color-mix(in srgb,var(--c) 14%,transparent);color:color-mix(in srgb,var(--c) 75%,var(--text));border:1px solid color-mix(in srgb,var(--c) 25%,transparent)}
+.bio{white-space:pre-wrap;line-height:1.55;font-size:15px;margin:0}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.facts div{padding:12px 14px;border-radius:18px;background:color-mix(in srgb,var(--c) 8%,transparent);border:1px solid var(--line)}
+.facts small{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+.facts b{font-size:16px}
+h2{font-family:Sora,sans-serif;font-size:18px;margin:0 0 4px}
+form{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--muted)}
+input,textarea{font:inherit;color:var(--text);height:48px;border-radius:14px;padding:0 14px;border:1px solid var(--line);background:color-mix(in srgb,var(--card) 60%,transparent);outline:none}
+textarea{height:auto;padding:12px 14px;resize:vertical}
+input:focus,textarea:focus{border-color:var(--c);box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 15%,transparent)}
+.btn{height:52px;border-radius:999px;border:0;font:inherit;font-weight:600;font-size:16px;color:#fff;background:var(--c);background-image:linear-gradient(180deg,rgba(255,255,255,.25),rgba(255,255,255,0) 60%);box-shadow:0 14px 30px -12px var(--c);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:transform .2s}
+.btn:hover{transform:translateY(-2px)}
+.btn.wa{background-color:#25D366;box-shadow:0 14px 30px -12px #25D366}
+.btn svg{width:20px;height:20px}
+.ok{text-align:center;padding:10px 0}.ok b{font-family:Sora,sans-serif;font-size:20px;display:block;margin-bottom:6px}
+.err{color:#DC2626;font-size:13.5px;min-height:18px;margin:0}
+.foot{text-align:center;font-size:12.5px;color:var(--faint)}.foot a{color:inherit}
+.empty{text-align:center;color:var(--muted);padding:40px 0}
+</style>
+</head>
+<body>
+<div class="amb" aria-hidden="true"><i></i><i></i><i></i></div>
+<main id="m"><div class="empty">Carregando…</div></main>
+<script>
+(async () => {
+  const m = document.getElementById('m');
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const slug = (location.pathname.split('/p/')[1] || new URLSearchParams(location.search).get('s') || '').replace(/\/$/, '').toLowerCase();
+  const logo = '<svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="30" y1="62" x2="72" y2="30"><stop offset="0" stop-color="#1FC8A8"/><stop offset=".55" stop-color="#9A5BE6"/><stop offset="1" stop-color="#E5245E"/></linearGradient></defs><rect x="5" y="5" width="90" height="90" rx="27" fill="rgba(255,255,255,.55)" stroke="rgba(139,92,246,.35)" stroke-width="2"/><path fill="url(#g)" d="M40.6 27H67.2Q70.6 27 70.6 30.4V34.4Q70.6 39.6 65.4 39.6H33.2Q30.6 39.6 32.2 37.6L38.4 28.6Q39.3 27 40.6 27Z"/><path fill="url(#g)" d="M50.2 45.6H61.2Q64.6 45.6 64.6 49V53.6Q64.6 57.2 61 57.2H50.6Q48.4 57.2 47 59L40.6 67Q38.8 69.2 36 69.2H34Q31 69.2 31 66.4V61Q31 58.2 34 58.2H36.4Q38.6 58.2 39.8 56.7L46.8 47.4Q48.1 45.6 50.2 45.6Z"/></svg>';
+  const cfg = window.FLUID_CONFIG || {};
+  if (!slug || !window.supabase || !cfg.supabaseUrl){ m.innerHTML = '<div class="empty">Página não encontrada.</div>'; return; }
+  const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, { auth:{ persistSession:false } });
+  const { data: p } = await sb.from('teacher_pages').select('*').eq('slug', slug).eq('published', true).maybeSingle();
+  if (!p){ m.innerHTML = `<a class="brand" href="/">${logo}Fluid</a><div class="card empty">Essa página não existe ou ainda não foi publicada.</div>`; return; }
+  document.title = (p.title || 'Aulas de violão') + ' · Fluid';
+  if (p.color) document.documentElement.style.setProperty('--c', p.color);
+  const ini = (p.title || '?').replace(/^(prof\.?|professora?)\s+/i,'').split(/\s+/).filter(w => /^[A-Za-zÀ-ÿ]/.test(w)).slice(0,2).map(w => w[0]).join('').toUpperCase() || 'F';
+  const styles = (p.styles || '').split(/[,;\n]/).map(x => x.trim()).filter(Boolean);
+  const wa = (p.whatsapp || '').replace(/\D/g,''); const waN = wa.length === 10 || wa.length === 11 ? '55' + wa : wa;
+  m.innerHTML = `<a class="brand" href="/">${logo}Fluid</a>
+    <section class="card hero"><div class="av">${esc(ini)}</div><h1>${esc(p.title || 'Aulas de violão')}</h1>${p.city ? `<p class="sub">${esc(p.city)}</p>` : ''}
+      ${styles.length ? `<div class="chips">${styles.map(s => `<span>${esc(s)}</span>`).join('')}</div>` : ''}</section>
+    ${p.bio || p.price ? `<section class="card">${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ''}${p.price || p.city ? `<div class="facts">${p.price ? `<div><small>Investimento</small><b>${esc(p.price)}</b></div>` : ''}<div><small>Acompanhamento</small><b>Pelo app Fluid</b></div></div>` : ''}</section>` : ''}
+    <section class="card" id="f"><h2>Quero fazer aulas</h2><p class="sub">Deixe seu contato e eu te chamo para combinar o horário.</p>
+      <form id="lf"><label>Seu nome<input name="name" required minlength="2" maxlength="80" autocomplete="name"></label>
+        <label>WhatsApp<input name="phone" type="tel" inputmode="tel" maxlength="30" placeholder="(15) 99999-9999" autocomplete="tel"></label>
+        <label>Conte um pouco (opcional)<textarea name="message" rows="3" maxlength="500" placeholder="Nunca toquei, quero aprender músicas para tocar com a família"></textarea></label>
+        <p class="err" id="er"></p><button class="btn" type="submit">Quero aulas</button></form>
+      ${waN ? `<a class="btn wa" style="margin-top:10px" href="https://wa.me/${waN}?text=${encodeURIComponent('Oi! Vi sua página no Fluid e quero saber das aulas de violão.')}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A11 11 0 0 0 3.2 17.1L2 22l5-1.3A11 11 0 1 0 20.5 3.5Zm-3.5 10.3c-.3-.1-1.6-.8-1.9-.9s-.4-.1-.6.1-.7.9-.9 1.1-.3.2-.6.1a7.4 7.4 0 0 1-3.7-3.2c-.3-.5.3-.5.8-1.5.1-.2 0-.3 0-.5l-.9-2c-.2-.5-.5-.5-.6-.5h-.5a1 1 0 0 0-.8.4 3.2 3.2 0 0 0-1 2.4 5.6 5.6 0 0 0 1.2 3 12.8 12.8 0 0 0 4.9 4.3c1.8.8 2.5.8 3.4.7a2.9 2.9 0 0 0 1.9-1.3 2.4 2.4 0 0 0 .2-1.3c-.1-.2-.3-.3-.6-.4Z"/></svg>Chamar no WhatsApp</a>` : ''}
+    </section>
+    <p class="foot">Aulas organizadas com o <a href="/">Fluid</a>, caderno de violão para professor e aluno.</p>`;
+  document.getElementById('lf').onsubmit = async e => {
+    e.preventDefault(); const f = e.target, er = document.getElementById('er'); const b = f.querySelector('button'); b.disabled = true; er.textContent = '';
+    const row = { teacher_id: p.user_id, name: f.name.value.trim(), phone: f.phone.value.trim() || null, message: f.message.value.trim() || null };
+    const { error } = await sb.from('leads').insert(row);
+    if (error){ b.disabled = false; er.textContent = 'Não deu certo agora. Tente de novo ou chame no WhatsApp.'; return; }
+    document.getElementById('f').innerHTML = `<div class="ok"><b>Recebido, ${esc(row.name.split(' ')[0])}!</b><p class="sub">${esc(p.title || 'O professor')} vai te chamar em breve para combinar a primeira aula.</p></div>`;
+  };
+})();
+</script>
+</body>
+</html>

@@ -31,6 +31,23 @@
   .fx-err{color:var(--bad);font-size:13.5px;min-height:18px}
   .fx-ok{color:var(--ok);font-size:13.5px}
   .fx-link{border:0;background:none;padding:6px 0;color:var(--accentInk);font-weight:600;text-decoration:underline;text-underline-offset:3px;align-self:flex-start}
+  .fx-news{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:55;display:flex;align-items:flex-start;gap:12px;width:min(460px,calc(100% - 32px));padding:14px 14px 14px 14px;border-radius:22px;background:var(--sheetBg,var(--surface));border:1px solid var(--glassEdge,var(--line));box-shadow:var(--glassHi,none),0 20px 50px -16px rgba(20,22,60,.35);-webkit-backdrop-filter:blur(30px) saturate(1.7);backdrop-filter:blur(30px) saturate(1.7);animation:celeIn .5s cubic-bezier(.2,1.3,.3,1) both}
+  .fx-news.out{opacity:0;transform:translate(-50%,12px);transition:all .3s}
+  .fx-news-ic{width:38px;height:38px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(160deg,#A78BFA,#6366F1)}
+  .fx-news-ic svg{width:19px;height:19px}
+  .fx-news-tx{flex:1;font-size:13.5px;line-height:1.45}.fx-news-tx small{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accentInk);margin-bottom:2px}
+  .fx-news button{width:30px;height:30px;border-radius:50%;border:0;background:var(--glass2,var(--surface2));color:var(--muted);font-size:18px;line-height:1;padding:0}
+  .fx-off{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:56;padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:600;color:#fff;background:#F59E0B;box-shadow:0 8px 20px -8px rgba(245,158,11,.6)}
+  .fx-roles{display:flex;flex-direction:column;gap:10px}
+  .fx-roles button{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px;border-radius:20px;border:1px solid var(--glassEdgeSoft,var(--line));background:var(--glass,var(--surface));color:var(--text);transition:transform .2s cubic-bezier(.2,1.3,.3,1),border-color .2s}
+  .fx-roles button:hover{transform:translateY(-2px);border-color:var(--accent)}
+  .fx-roles b{display:block;font-size:15.5px}.fx-roles small{display:block;font-size:13px;color:var(--muted)}
+  .r-ic{width:48px;height:48px;border-radius:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;background:radial-gradient(circle at 32% 26%,color-mix(in srgb,var(--c) 45%,#fff),var(--c) 60%,color-mix(in srgb,var(--c) 70%,#000));box-shadow:0 8px 18px -8px var(--c)}
+  .r-ic svg{width:24px;height:24px}
+  .fx-tips{display:flex;flex-direction:column;gap:12px}
+  .fx-tips div{display:flex;gap:12px;align-items:flex-start;animation:cardIn .5s cubic-bezier(.2,.8,.2,1) both}
+  .fx-tips i{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:700;color:var(--onAccent);background:var(--accent)}
+  .fx-tips b{display:block;font-size:14.5px}.fx-tips small{display:block;font-size:13px;color:var(--muted)}
   .fx-inv{padding:12px 14px;border-radius:16px;background:var(--glowSoft);color:var(--accentInk);font-size:14px;font-weight:500}
   .fx-acc{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:19;display:flex;align-items:center;gap:8px;height:44px;padding:0 14px 0 6px;border-radius:999px;border:1px solid var(--glassEdge,var(--line));background:var(--glass,var(--surface));box-shadow:var(--glassHi,none),0 10px 30px -10px rgba(20,22,60,.3);-webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7);font-size:13px;font-weight:600;max-width:calc(100% - 32px)}
   .fx-acc i{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--onAccent);font-style:normal;font-family:var(--fDisplay);font-size:13px;flex-shrink:0}
@@ -128,6 +145,7 @@
     window.FluidWeb = { sb, esc, errText, initials, me: () => me, notebooks: () => notebooks, current: () => current, switchTo, loadNotebooks,
       signOut: async () => { await sb.auth.signOut(); localStorage.removeItem(LSNB); location.reload(); }, showAccount };
     if (window.FluidHub) window.FluidHub.boot(); else renderAccBtn();
+    if (!inviteErr) setTimeout(onboarding, 600);
     resolveDb(makeDb(current.id));
     if (inviteErr){ show(`${brand}<h2>Convite</h2><p>${esc(inviteErr)}</p><button class="btn primary" type="button" id="fx-close">Continuar</button>`); over.onclick = e => { if (e.target.closest('#fx-close')) hide(); }; inviteErr = ''; }
   }
@@ -190,26 +208,60 @@
     const snapDoc = (c, id) => { const d = col(c).get(id); return { id, exists: !!d, data: () => d }; };
     const emit = c => { (colSubs.get(c)||[]).forEach(fn => fn(snapCol(c))); col(c).forEach((_, id) => {}); (docSubs.get(c)||new Map()).forEach((fns, id) => fns.forEach(fn => fn(snapDoc(c, id)))); };
     let loaded = null;
+    const CK = 'fluid.cache.' + nb, QK = 'fluid.queue.' + nb, SK = 'fluid.seen.' + nb;
+    const lsJ = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? d; } catch(e){ return d; } };
+    const lsW = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
+    let saveT = 0; const saveCache = () => { clearTimeout(saveT); saveT = setTimeout(() => { const o = {}; cache.forEach((m, c) => { o[c] = Object.fromEntries(m); }); lsW(CK, o); }, 400); };
+    const offline = e => !navigator.onLine || /fetch|network|Failed|Load failed/i.test((e && (e.message || e.toString())) || '');
+    const queue = op => { const q = lsJ(QK, []); q.push(op); lsW(QK, q); offlinePill(true); };
+    async function flush(){
+      const q = lsJ(QK, []); if (!q.length) return; const left = [];
+      for (const op of q){
+        try { const r = op.t === 'del' ? await sb.from('items').delete().eq('notebook_id', nb).eq('collection', op.c).eq('id', op.id)
+                                         : await sb.from('items').upsert({ notebook_id: nb, collection: op.c, id: op.id, data: op.d, updated_at: op.at });
+              if (r.error) left.push(op); } catch(e){ left.push(op); }
+      }
+      lsW(QK, left); offlinePill(left.length > 0); if (!left.length && q.length && window.toast) window.toast('Pronto: o que você anotou sem internet foi salvo.');
+    }
+    window.addEventListener('online', flush);
+    const names = {};
+    const nameOf = id => names[id] || 'Alguém';
+    const label = (c, d) => c === 'songs' ? '"' + ((d && d.title) || 'uma música') + '"' : c === 'lessons' ? 'a aula de ' + ((d && d.date) || '').split('-').reverse().slice(0,2).join('/') : c === 'meta' ? 'o progresso' : 'a pasta';
     const load = () => loaded || (loaded = (async () => {
-      const { data, error } = await sb.from('items').select('collection,id,data').eq('notebook_id', nb);
-      if (error) throw { code: 'unavailable', message: error.message };
-      (data||[]).forEach(r => col(r.collection).set(r.id, r.data));
+      let rows;
+      try {
+        const { data, error } = await sb.from('items').select('collection,id,data,updated_by,updated_at').eq('notebook_id', nb);
+        if (error) throw error; rows = data || [];
+      } catch(e){
+        const c = lsJ(CK, null); if (!c) throw { code: 'unavailable', message: (e && e.message) || 'offline' };
+        Object.entries(c).forEach(([k, m]) => Object.entries(m).forEach(([id, d]) => col(k).set(id, d))); offlinePill(true); return;
+      }
+      rows.forEach(r => col(r.collection).set(r.id, r.data)); saveCache();
+      // quem mais está na pasta (para nomear as novidades)
+      try { const { data: mem } = await sb.from('notebook_members').select('user_id, profiles(name)').eq('notebook_id', nb); (mem||[]).forEach(m => names[m.user_id] = ((m.profiles && m.profiles.name) || 'Alguém').split(' ')[0]); } catch(e){}
+      const seen = localStorage.getItem(SK); const meId = me && me.id;
+      if (seen){ const news = rows.filter(r => r.updated_by && r.updated_by !== meId && r.updated_at > seen && r.collection !== 'meta');
+        if (news.length) setTimeout(() => showNews(news.map(r => ({ who: nameOf(r.updated_by), what: label(r.collection, r.data), c: r.collection }))), 1400); }
+      localStorage.setItem(SK, new Date().toISOString());
+      flush();
       sb.channel('items-' + nb).on('postgres_changes', { event: '*', schema: 'public', table: 'items', filter: 'notebook_id=eq.' + nb }, p => {
         const r = p.new && p.new.collection ? p.new : p.old; if (!r || !r.collection) return;
         if (r.notebook_id && r.notebook_id !== nb) return;
         if (p.eventType === 'DELETE') col(r.collection).delete(r.id); else col(r.collection).set(r.id, p.new.data);
-        emit(r.collection);
+        emit(r.collection); saveCache();
+        if (p.new && p.new.updated_by && p.new.updated_by !== meId && r.collection !== 'meta' && window.toast){ window.toast(nameOf(p.new.updated_by) + ' atualizou ' + label(r.collection, p.new.data)); localStorage.setItem(SK, new Date().toISOString()); }
       }).subscribe();
     })());
     const write = async (c, id, data) => {
-      col(c).set(id, data); emit(c);
-      const { error } = await sb.from('items').upsert({ notebook_id: nb, collection: c, id, data, updated_at: new Date().toISOString() });
-      if (error) throw { code: 'unavailable', message: error.message };
+      col(c).set(id, data); emit(c); saveCache();
+      const at = new Date().toISOString();
+      try { const { error } = await sb.from('items').upsert({ notebook_id: nb, collection: c, id, data, updated_at: at }); if (error) throw error; }
+      catch(e){ if (offline(e)){ queue({ t:'set', c, id, d: data, at }); return; } throw { code: 'unavailable', message: e.message }; }
     };
     const del = async (c, id) => {
-      col(c).delete(id); emit(c);
-      const { error } = await sb.from('items').delete().eq('notebook_id', nb).eq('collection', c).eq('id', id);
-      if (error) throw { code: 'unavailable', message: error.message };
+      col(c).delete(id); emit(c); saveCache();
+      try { const { error } = await sb.from('items').delete().eq('notebook_id', nb).eq('collection', c).eq('id', id); if (error) throw error; }
+      catch(e){ if (offline(e)){ queue({ t:'del', c, id }); return; } throw { code: 'unavailable', message: e.message }; }
     };
     const docRef = (c, id) => ({
       id, path: c + '/' + id,
@@ -229,6 +281,46 @@
       doc: path => { const [c, id] = path.split('/'); return docRef(c, id); }
     };
   }
+
+  /* ---------- novidades, sem internet, boas-vindas ---------- */
+  function showNews(list){
+    document.querySelectorAll('.fx-news').forEach(x => x.remove());
+    const by = {}; list.forEach(n => (by[n.who] ||= []).push(n.what));
+    const el = document.createElement('div'); el.className = 'fx-news'; el.setAttribute('role','status');
+    el.innerHTML = `<span class="fx-news-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 21a2 2 0 0 0 4 0"/></svg></span>
+      <span class="fx-news-tx"><small>Novidades desde a sua última visita</small>${Object.entries(by).map(([w, arr]) => `<b>${esc(w)}</b> mexeu em ${esc([...new Set(arr)].slice(0,3).join(', '))}${arr.length > 3 ? ' e mais ' + (arr.length - 3) : ''}`).join('<br>')}</span>
+      <button type="button" aria-label="Fechar">×</button>`;
+    el.querySelector('button').onclick = () => { el.classList.add('out'); setTimeout(() => el.remove(), 300); };
+    document.body.appendChild(el); setTimeout(() => { if (el.isConnected){ el.classList.add('out'); setTimeout(() => el.remove(), 300); } }, 12000);
+  }
+  let pill = null;
+  function offlinePill(on){
+    if (!on){ pill && pill.remove(); pill = null; return; }
+    if (pill) return; pill = document.createElement('div'); pill.className = 'fx-off'; pill.textContent = 'Sem internet: o que você anotar fica salvo no aparelho';
+    document.body.appendChild(pill);
+  }
+  window.addEventListener('online', () => offlinePill(false));
+  function onboarding(){
+    const key = 'fluid.onb.' + me.id; if (localStorage.getItem(key)) return;
+    const pick = (role) => {
+      localStorage.setItem(key, role);
+      const tips = role === 'teacher'
+        ? [['Cadastre seus alunos', 'Com WhatsApp, dias de aula e mensalidade. O Fluid cria as cobranças todo mês.'], ['Uma pasta para cada aluno', 'Convide o aluno pelo link e anotem juntos as músicas e lições.'], ['Agenda e financeiro', 'Presença, faltas, reposições, Pix com QR e lembretes no WhatsApp.']]
+        : [['Cole a mensagem do professor', 'Em "+ Música", cole o que ele mandou e o Fluid monta os acordes.'], ['Treine todo dia', 'Metrônomo, afinador, troca de acordes e tocar junto com a música.'], ['Acompanhe sua evolução', 'Dias seguidos, metas da semana, conquistas e gravações para comparar.']];
+      show(`${brand}<h2>Tudo pronto, ${esc(me.name.split(' ')[0])}!</h2>
+        <div class="fx-tips">${tips.map((t, i) => `<div style="animation-delay:${i*120}ms"><i>${i+1}</i><span><b>${t[0]}</b><small>${t[1]}</small></span></div>`).join('')}</div>
+        <button class="btn primary" type="button" id="fx-go">${role === 'teacher' ? 'Cadastrar meu primeiro aluno' : 'Começar'}</button>`);
+      over.onclick = e => { if (!e.target.closest('#fx-go')) return; hide(); if (window.FLUID_CONFETTI) window.FLUID_CONFETTI(); if (role === 'teacher' && window.FluidHub) window.FluidHub.open('alunos'); };
+    };
+    show(`${brand}<h2>Bem-vindo ao Fluid!</h2><p>Como você vai usar o app? Dá para mudar depois.</p>
+      <div class="fx-roles">
+        <button type="button" data-role="student"><span class="r-ic" style="--c:#14B8A6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg></span><span><b>Sou aluno</b><small>Anotar músicas, treinar e evoluir</small></span></button>
+        <button type="button" data-role="teacher"><span class="r-ic" style="--c:#8B5CF6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11h5M19.5 8.5v5"/></svg></span><span><b>Sou professor</b><small>Alunos, agenda, aulas e cobranças</small></span></button>
+        <button type="button" data-role="both"><span class="r-ic" style="--c:#F97316"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.5 2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9Z"/></svg></span><span><b>Os dois</b><small>Estudo e também dou aula</small></span></button>
+      </div>`);
+    over.onclick = e => { const b = e.target.closest('[data-role]'); if (b) pick(b.dataset.role === 'both' ? 'teacher' : b.dataset.role); };
+  }
+  if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
 
   /* ---------- Spotify + IA through Vercel functions ---------- */
   const authHeader = async () => { const { data } = await sb.auth.getSession(); return data.session ? { Authorization: 'Bearer ' + data.session.access_token } : {}; };

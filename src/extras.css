@@ -134,3 +134,16 @@
 .al-x{width:34px;height:34px;border-radius:50%;border:0;background:var(--glass2);color:var(--muted);display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
 .al-x svg{width:15px;height:15px}
 @media (max-width:620px){.along{top:calc(62px + env(safe-area-inset-top,0px));right:12px;width:min(250px,64vw);border-radius:18px}.al-bar .seg button{padding:0 8px;font-size:12px}}
+
+/* ===== lição: prazo e comentário ===== */
+.due-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.due-row label{font-size:13px;font-weight:600;color:var(--muted)}
+.due-row .inp{height:40px;max-width:180px}
+.due-row .hint{font-size:12px}
+.hw-item{display:flex;flex-direction:column;gap:6px}
+.hw-item .check-row{align-items:flex-start}
+.due{font-weight:700;color:var(--accentInk)}.due.late{color:#DC2626}
+.hw-rep-b{margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
+.hw-rep-b svg{width:15px;height:15px}
+.hw-reply{margin:0 0 0 36px;padding:8px 12px;border-radius:12px;background:var(--glowSoft);font-size:13px;color:var(--text)}
+.hw-rep-f{display:flex;gap:8px;margin-left:36px}.hw-rep-f .inp{flex:1;min-width:0;height:40px;border-radius:12px;padding:0 12px}
