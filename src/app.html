@@ -951,6 +951,27 @@ body{background-attachment:fixed}
 .hw-reply{margin:0 0 0 36px;padding:8px 12px;border-radius:12px;background:var(--glowSoft);font-size:13px;color:var(--text)}
 .hw-rep-f{display:flex;gap:8px;margin-left:36px}.hw-rep-f .inp{flex:1;min-width:0;height:40px;border-radius:12px;padding:0 12px}
 
+/* ===== dedilhado clicável ===== */
+.rb{margin-top:10px;padding:12px;border-radius:20px;background:var(--glass2);border:1px solid var(--glassEdgeSoft);display:flex;flex-direction:column;gap:10px}
+.rb-hint{font-size:12.5px;color:var(--muted)}
+.rb-scroll{overflow-x:auto;scrollbar-width:thin;margin:0 -4px;padding:0 4px 4px}
+.rb-board{display:flex;flex-direction:column;gap:3px;min-width:calc(var(--frets) * 40px + 34px)}
+.rb-row{position:relative;display:grid;grid-template-columns:30px repeat(var(--frets),1fr);gap:3px;align-items:center}
+.rb-nums small{text-align:center;font-size:10.5px;font-weight:600;color:var(--faint)}
+.rb-sn{font-size:11px;font-weight:700;color:var(--muted);text-align:right;padding-right:4px}
+.rb-str{position:absolute;left:34px;right:0;top:50%;height:var(--w);margin-top:calc(var(--w) / -2);background:linear-gradient(90deg,rgba(160,140,110,.7),rgba(200,180,150,.7));pointer-events:none;z-index:0;border-radius:2px}
+.rb-c{position:relative;z-index:1;height:34px;border-radius:10px;border:1px solid transparent;background:transparent;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s cubic-bezier(.2,1.4,.3,1)}
+.rb-c i{font-style:normal;font-family:var(--fMono);font-size:11px;font-weight:600;color:transparent;width:28px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.rb-c:hover i{color:var(--accentInk);background:color-mix(in srgb,var(--accent) 14%,var(--solid));box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent)}
+.rb-c.open{border-right:3px solid color-mix(in srgb,var(--text) 55%,transparent);border-radius:10px 2px 2px 10px}
+.rb-row:not(.rb-nums) .rb-c:not(.open){border-right:1px solid var(--lineStrong);border-radius:0}
+.rb-row:nth-child(4) .rb-c.dot::after{content:"";position:absolute;bottom:-6px;left:50%;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:var(--lineStrong)}
+.rb-c.used i{color:var(--accentInk);background:color-mix(in srgb,var(--accent) 16%,var(--solid));box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent)}
+.rb-c.hit i,.rb-c.play i{color:var(--onAccent);background:var(--accent);box-shadow:0 0 0 4px var(--glowSoft);animation:rbPop .35s cubic-bezier(.2,1.6,.3,1)}
+@keyframes rbPop{0%{transform:scale(.5)}100%{transform:scale(1)}}
+.rb-tools{display:flex;gap:6px;flex-wrap:wrap}
+.rb-tools .btn svg{width:14px;height:14px}
+
 /* @@END-EXTRAS-CSS@@ */
 </style>
 
@@ -1066,7 +1087,7 @@ function parseMessage(txt){
   txt.split(/\n/).forEach(line => {
     let l = line.trim(); if (!l){ groupLabel=''; groupCount=0; return; } if (/https?:/.test(l)) return;
     l = l.replace(/capo(?:traste)?\s*(?:na\s*|casa\s*|:\s*)?\d{1,2}ª?/ig,'').replace(/\d{2,3}\s*bpm/ig,'').trim(); if (!l || /^[\s\-–—:·,.;|]*$/.test(l)) return;
-    let label = ''; const lm = l.match(/^([^\d↓↑:]{2,24}):\s*(.+)$/); if (lm){ label = lm[1].trim(); l = lm[2].trim(); }
+    let label = ''; const lm = l.match(/^([^↓↑:]*[A-Za-zÀ-ÿ][^↓↑:]{0,22}):\s*(.+)$/); if (lm){ label = lm[1].trim(); l = lm[2].trim(); }
     const st = parseStrumText(l); if (st){ out.strum = st; pendingLabel=''; return; }
     if (/^[\d\s\-]+$/.test(l) && /\d{2}-\d/.test(l) && !/\s/.test(l.replace(/\s*-\s*/g,'-'))){ const c = parseCode(l); if (c){ out.chords.push(c); pendingLabel=''; return; } }
     const rf = parseRiffText(l); if (rf){
@@ -1923,8 +1944,9 @@ function renderEditor(){
         <div class="field"><label for="ed-hue">Cor</label><div class="pills" id="ed-hue" role="group" aria-label="Cor da música">${HUES.map(h=>`<button type="button" class="pill" data-hue="${h}" aria-pressed="${hueOf(s)===h}" aria-label="Cor" style="min-width:40px;background:${h};border-color:${hueOf(s)===h?'var(--text)':'transparent'}"></button>`).join('')}</div></div>
       </div>
       <div class="field"><label for="ed-riffs">Dedilhado (um por linha)</label>
-        <textarea class="inp mono" id="ed-riffs" rows="3" placeholder="Intro: 60·60·45↑·42·60·60·50·51·52">${esc((s.riffs||[]).map(riffToText).join('\n'))}</textarea>
-        <span class="hint" id="riff-msg">Corda+casa separados por ponto ou espaço. Rótulo opcional antes de ":".</span></div>
+        <textarea class="inp mono" id="ed-riffs" rows="3" placeholder="Toque nas casas abaixo ou digite. Ex.: Intro: 60 60 45↑ 42">${esc((s.riffs||[]).map(riffToText).join('\n'))}</textarea>
+        ${riffBoardHTML()}
+        <span class="hint" id="riff-msg">Ou digite: corda e casa (60 = corda 6 solta), separados por ponto ou espaço. "Frase 1:" dá nome à parte.</span></div>
       <div class="field" id="ed-lyrics-f"><label for="ed-lyrics">Letra</label>
         <div class="row" style="gap:8px"><a class="linkbtn sp-search" id="ed-lysearch" href="${lyricSearch(s,'song')}" target="_blank" rel="noopener"><i class="other">${I.search}</i><span>Procurar letra</span></a><a class="linkbtn sp-search" id="ed-lyartist" href="${lyricSearch(s,'artist')}" target="_blank" rel="noopener"><i class="other">${I.search}</i><span>Só pelo artista</span></a></div>
         <textarea class="inp" id="ed-lyrics" rows="9" placeholder="Cole a letra, ou a cifra com os acordes em cima da letra:&#10;&#10;[Refrão]&#10;Am          C&#10;Canto pra lua cheia">${esc(s.lyrics||'')}</textarea>
@@ -1938,7 +1960,7 @@ function renderEditor(){
 function readFields(){
   const s = ed.s; const g = id => document.getElementById(id);
   if (g('ed-title')) { s.title = g('ed-title').value.trim(); s.artist = g('ed-artist').value.trim(); s.link = g('ed-link').value.trim(); s.notes = g('ed-notes').value; if (g('ed-lyrics')) s.lyrics = g('ed-lyrics').value;
-    if (g('ed-riffs')){ const rs = []; g('ed-riffs').value.split('\n').forEach(line => { let l = line.trim(); if (!l) return; let label=''; const m = l.match(/^([^\d:]{1,24}):\s*(.+)$/); if (m){ label=m[1].trim(); l=m[2]; } const notes = parseRiffText(l) || (parseNoteTok(l.trim()) ? [parseNoteTok(l.trim())] : null); if (notes) rs.push({label, notes}); }); s.riffs = rs; } s.lessonDate = g('ed-date').value;
+    if (g('ed-riffs')){ const rs = []; g('ed-riffs').value.split('\n').forEach(line => { let l = line.trim(); if (!l) return; let label=''; const m = l.match(/^([^:]*[A-Za-zÀ-ÿ][^:]{0,23}):\s*(.+)$/); if (m){ label=m[1].trim(); l=m[2]; } const notes = parseRiffText(l) || (parseNoteTok(l.trim()) ? [parseNoteTok(l.trim())] : null); if (notes) rs.push({label, notes}); }); s.riffs = rs; } s.lessonDate = g('ed-date').value;
     const b = parseInt(g('ed-bpm').value,10); s.bpm = isFinite(b) && b>20 && b<300 ? b : null; }
 }
 function rerender(keepScroll=true, read=true){
@@ -3061,6 +3083,72 @@ document.addEventListener('click', e => {
 });
 /* ================= FIM TOCAR JUNTO ================= */
 window.FLUID_CONFETTI = () => confetti(110);
+
+/* ================= DEDILHADO CLICÁVEL (editor) ================= */
+function riffBoardHTML(){
+  const frets = 12, strings = [1,2,3,4,5,6];
+  return `<div class="rb" id="rb">
+    <div class="rb-top"><span class="rb-hint">Toque nas casas na ordem em que se toca. Cada toque vira uma nota no dedilhado.</span></div>
+    <div class="rb-scroll"><div class="rb-board" style="--frets:${frets+1}">
+      <div class="rb-row rb-nums"><span class="rb-sn"></span>${Array.from({length:frets+1},(_,f)=>`<small>${f===0?'solta':f}</small>`).join('')}</div>
+      ${strings.map(s => `<div class="rb-row"><span class="rb-sn">${s}ª</span>${Array.from({length:frets+1},(_,f)=>`<button type="button" class="rb-c${f===0?' open':''}${[3,5,7,9,12].includes(f)?' dot':''}" data-rbn="${s}${f}" aria-label="Corda ${s}, ${f===0?'solta':'casa '+f}"><i>${s}${f}</i></button>`).join('')}<span class="rb-str" style="--w:${(s-1)*.35+1}px" aria-hidden="true"></span></div>`).join('')}
+    </div></div>
+    <div class="rb-tools">
+      <button type="button" class="btn sm" data-rb="pull" title="Marca puxada (↑) na última nota">↑ Puxada</button>
+      <button type="button" class="btn sm" data-rb="rest">Pausa</button>
+      <button type="button" class="btn sm" data-rb="label">Nome da parte</button>
+      <button type="button" class="btn sm" data-rb="line">Nova linha</button>
+      <button type="button" class="btn sm" data-rb="undo">Desfazer</button>
+      <button type="button" class="btn sm primary" data-rb="play">${I.play}Ouvir linha</button>
+    </div></div>`;
+}
+let rbCaret = null;
+const RB_LABEL = /^\s*[^:\n]*[A-Za-zÀ-ÿ][^:\n]{0,23}:\s*/;
+function rbLineRange(ta){
+  const v = ta.value; const at = rbCaret == null ? v.length : Math.min(rbCaret, v.length);
+  const st = v.lastIndexOf('\n', at - 1) + 1; let en = v.indexOf('\n', at); if (en < 0) en = v.length;
+  return { st, en, line: v.slice(st, en) };
+}
+function rbSet(ta, st, en, line){
+  ta.value = ta.value.slice(0, st) + line + ta.value.slice(en); const caret = st + line.length; rbCaret = caret;
+  ta.dispatchEvent(new Event('input', { bubbles:true }));
+  const t2 = document.getElementById('ed-riffs'); if (t2 && t2 !== ta) t2.value = ta.value; try { (t2||ta).setSelectionRange(caret, caret); } catch(e){}
+  rbMarks();
+}
+let rbTimers = [];
+function rbMarks(){ const ta = document.getElementById('ed-riffs'); if (!ta) return; const { line } = rbLineRange(ta);
+  const used = new Set((line.replace(RB_LABEL, '').match(/\b[1-6]\d{1,2}/g) || []));
+  document.querySelectorAll('.rb-c').forEach(c => c.classList.toggle('used', used.has(c.dataset.rbn))); }
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-rbn],[data-rb]'); if (!b) return; const ta = document.getElementById('ed-riffs'); if (!ta) return;
+  e.preventDefault();
+  const capo = (typeof ed !== 'undefined' && ed && ed.s && ed.s.capo) || 0;
+  if (b.dataset.rbn){
+    const s = +b.dataset.rbn[0], f = +b.dataset.rbn.slice(1); const { st, en, line } = rbLineRange(ta);
+    const sep = !line.trim() ? '' : /\s$/.test(line) ? '' : ' ';
+    rbSet(ta, st, en, line + sep + s + f);
+    try { pluck(OPEN[s] + f + capo, actx().currentTime + .01, .26, 1.4); } catch(err){}
+    b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 450); buzz(6); return;
+  }
+  const a = b.dataset.rb, { st, en, line } = rbLineRange(ta);
+  if (a === 'pull'){ if (/\d$/.test(line)) rbSet(ta, st, en, line + '↑'); else toast('Toque uma nota antes de marcar a puxada'); }
+  if (a === 'rest') rbSet(ta, st, en, line + (line.trim() ? ' ' : '') + '--');
+  if (a === 'undo'){ const lab = (line.match(RB_LABEL)||[''])[0], rest = line.slice(lab.length).replace(/\s*\S+\s*$/, ''); rbSet(ta, st, en, rest ? lab + rest : (line.slice(lab.length).trim() ? lab : '')); }
+  if (a === 'line'){ const v = ta.value.replace(/\s+$/, ''); rbSet(ta, 0, ta.value.length, v + (v ? '\n' : '')); }
+  if (a === 'label'){ const n = ta.value.split('\n').filter(l => RB_LABEL.test(l)).length + 1; const name = 'Frase ' + n + ': ';
+    if (RB_LABEL.test(line)) toast('Esta linha já tem nome. Toque em Nova linha para começar outra parte.'); else rbSet(ta, st, en, name + line.trim()); }
+  if (a === 'play'){
+    rbTimers.forEach(clearTimeout); rbTimers = [];
+    const body = line.replace(RB_LABEL, ''); const notes = parseRiffText(body);
+    if (!notes){ toast('Toque pelo menos duas notas para ouvir'); return; }
+    const bpm = (typeof ed !== 'undefined' && ed && ed.s && ed.s.bpm) || 80, step = 60/bpm/2, t0 = actx().currentTime + .05;
+    notes.forEach((n, i) => { if (!n.rest) pluck(OPEN[n.s] + n.f + capo, t0 + i*step, .26, 1.6);
+      rbTimers.push(setTimeout(() => { document.querySelectorAll('.rb-c.play').forEach(x => x.classList.remove('play')); if (!n.rest){ const c = document.querySelector(`[data-rbn="${n.s}${n.f}"]`); c && c.classList.add('play'); } }, (i*step + .05)*1000)); });
+    rbTimers.push(setTimeout(() => document.querySelectorAll('.rb-c.play').forEach(x => x.classList.remove('play')), (notes.length*step + .4)*1000));
+  }
+});
+['input','keyup','click','focus'].forEach(ev => document.addEventListener(ev, e => { if (e.target && e.target.id === 'ed-riffs' && e.isTrusted){ rbCaret = e.target.selectionEnd; rbMarks(); } }, true));
+/* ================= FIM DEDILHADO CLICÁVEL ================= */
 
 /* @@END-EXTRAS@@ */
 
