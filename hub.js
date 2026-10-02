@@ -27,10 +27,11 @@
   const colorFor = (id, c) => c || COLORS[[...String(id||'')].reduce((a,ch)=>a+ch.charCodeAt(0),0) % COLORS.length];
   const phoneDigits = p => { let d = String(p||'').replace(/\D/g,''); if (d.length===10 || d.length===11) d = '55'+d; return d; };
   const METHODS = [['pix','Pix'],['dinheiro','Dinheiro'],['cartao','Cartão'],['transferencia','Transferência']];
+  const METHOD_LABEL = k => k==='isento' ? 'Isento' : (METHODS.find(m=>m[0]===k)||[,k])[1];
 
   /* ---------- estado ---------- */
   const st = { open:false, tab:'pastas', view:null, students:[], payments:[], settings:{ remind_days:3 }, loaded:false, loadErr:'',
-    month: ymOf(today()), filter:'active', q:'', members:{}, owners:{}, flash:'', busy:false, payOpen:null };
+    month: ymOf(today()), finTab:'geral', range:{ preset:'month' }, hq:'', filter:'active', q:'', members:{}, owners:{}, flash:'', busy:false, payOpen:null };
 
   /* ---------- status das cobranças ---------- */
   function payStatus(p){
@@ -171,6 +172,7 @@
     edit: sv('<path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/>'), check: sv('<path d="M5 12l5 5 9-10"/>'),
     left: sv('<path d="M15 18l-6-6 6-6"/>'), right: sv('<path d="M9 18l6-6-6-6"/>'), gear: sv('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>'),
     cal: sv('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>'), alert: sv('<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>'),
+    receipt: sv('<path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6"/>'), down: sv('<path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 20h14"/>'), bell: sv('<path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 21a2 2 0 0 0 4 0"/>'), grid: sv('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'),
     trash: sv('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'), pause: sv('<path d="M9 5v14M15 5v14"/>'), play: sv('<path d="M7 5l12 7-12 7Z"/>'), share: sv('<path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>'),
   };
   const pill = (k, label) => `<span class="hb-pill ${STATUS[k]?.[1]||k}">${esc(label || STATUS[k][0])}</span>`;
@@ -342,11 +344,11 @@
     const open = st.payOpen === p.id;
     return `<div class="hb-pay ${k}${open?' open':''}" style="--c:${color}">
       <button class="hb-pay-main" ${inStudent ? 'tabindex="-1"' : `data-h="stu" data-id="${s.id}"`}>${avatar(s.name, color, 'sm')}
-        <span class="hb-rmain"><b>${esc(inStudent ? label : s.name)}</b><small>${inStudent ? '' : esc(label) + ' · '}${p.virtual ? 'vence ' + shortDate(p.due_date) : esc(dueLabel(p))}${p.paid_at && p.method ? ' · ' + esc((METHODS.find(m=>m[0]===p.method)||[,p.method])[1]) : ''}</small></span>
+        <span class="hb-rmain"><b>${esc(inStudent ? label : s.name)}</b><small>${inStudent ? '' : esc(label) + ' · '}${p.virtual ? 'vence ' + shortDate(p.due_date) : esc(dueLabel(p))}${p.paid_at && p.method ? ' · ' + esc(METHOD_LABEL(p.method)) : ''}</small></span>
         <span class="hb-amt">${brl(p.amount)}</span></button>
       ${p.virtual ? '' : `<div class="hb-pay-act">${pill(k)}
-        ${p.paid_at ? `<button class="btn ghost sm" data-h="unpay" data-id="${p.id}">Desfazer</button>`
-          : `${s.phone ? `<a class="btn sm hb-wa" href="https://wa.me/${phoneDigits(s.phone)}?text=${encodeURIComponent(chargeText(p, s))}" target="_blank" rel="noopener">${IC.wa}Cobrar</a>` : ''}<button class="btn sm primary" data-h="payopen" data-id="${p.id}">${IC.check}Recebi</button>`}</div>
+        ${p.paid_at ? `<button class="btn ghost sm" data-h="unpay" data-id="${p.id}">Desfazer</button><button class="btn sm" data-h="card" data-id="${p.id}">${IC.receipt}Recibo</button>`
+          : `<button class="hb-icon sm" data-h="payedit" data-id="${p.id}" aria-label="Editar cobrança">${IC.edit}</button><button class="btn sm hb-wa" data-h="card" data-id="${p.id}">${IC.wa}${k==='late'?'Cobrar':'Lembrar'}</button><button class="btn sm primary" data-h="payopen" data-id="${p.id}">${IC.check}Recebi</button>`}</div>
         ${open ? `<div class="hb-methods"><span>Recebido como?</span>${METHODS.map(([k2,l]) => `<button class="hb-chip" data-h="pay" data-id="${p.id}" data-v="${k2}">${l}</button>`).join('')}<button class="hb-icon sm" data-h="payopen" data-id="" aria-label="Cancelar">${IC.close}</button></div>` : ''}`}
     </div>`;
   }
@@ -367,39 +369,208 @@
     }
     return rows.sort((a,b) => a.due_date.localeCompare(b.due_date));
   }
+  /* ---------- período (filtro de datas) ---------- */
+  function rangeOf(){
+    const r = st.range, t = today(), cm = ymOf(t);
+    if (r.preset==='month') return { from: cm+'-01', to: cm+'-'+pad(dim(cm)), label: monthName(cm) };
+    if (r.preset==='last'){ const m = addMonths(cm,-1); return { from: m+'-01', to: m+'-'+pad(dim(m)), label: monthName(m) }; }
+    if (r.preset==='3m'){ const m = addMonths(cm,-2); return { from: m+'-01', to: cm+'-'+pad(dim(cm)), label: 'Últimos 3 meses' }; }
+    if (r.preset==='year'){ const y = t.slice(0,4); return { from: y+'-01-01', to: y+'-12-31', label: 'Ano de ' + y }; }
+    const from = r.from || cm+'-01', to = r.to || t;
+    return { from, to, label: fullDate(from) + ' a ' + fullDate(to) };
+  }
+  const inRange = (d, R) => d && d >= R.from && d <= R.to;
+  const sumOf = list => list.reduce((a,p)=>a+(Number(p.amount)||0),0);
+  function upcoming(days){ // próximas mensalidades, inclusive as que ainda não foram geradas
+    const t = today(), end = isoOf(new Date(parse(t).getTime() + days*864e5)), out = [];
+    st.payments.filter(p => !p.paid_at && p.due_date >= t && p.due_date <= end).forEach(p => out.push(p));
+    for (let k = 0; k <= 2; k++){ const ym = addMonths(ymOf(t), k);
+      st.students.filter(s => s.status==='active' && Number(s.fee) > 0 && ymOf(s.start_date||t) <= ym).forEach(s => {
+        const due = ym+'-'+pad(Math.min(s.due_day||10, dim(ym)));
+        if (due < t || due > end || st.payments.some(p => p.student_id===s.id && p.period===ym)) return;
+        out.push({ id:'v-'+s.id+'-'+ym, virtual:true, student_id:s.id, period:ym, due_date:due, amount:s.fee });
+      }); }
+    return out.sort((a,b)=>a.due_date.localeCompare(b.due_date));
+  }
+
   function viewFinance(){
-    const ym = st.month, rows = monthRows(ym);
-    const sum = f => rows.filter(f).reduce((a,p)=>a+(Number(p.amount)||0),0);
-    const paid = sum(p => p.paid_at), late = sum(p => !p.virtual && payStatus(p)==='late'), total = sum(() => true), toGet = total - paid - late;
+    if (!st.students.length) return `<div class="hb-empty big"><h3>Seu financeiro começa pelos alunos</h3><p>Cadastre os alunos com a mensalidade e o dia do vencimento. As cobranças aparecem aqui sozinhas todo mês, com alerta de atraso, lembrete com capinha para o WhatsApp e recibo.</p><button class="btn primary" data-h="stu-new">${IC.plus}Cadastrar aluno</button></div>`;
+    const tabs = [['geral','Geral'],['cobrancas','Cobranças'],['historico','Histórico'],['mapa','Quem pagou']];
+    const sub = { geral: finOverview, cobrancas: finCharges, historico: finHistory, mapa: finMap }[st.finTab]();
+    return `<div class="hb-subtabs" role="tablist">${tabs.map(([k,l]) => `<button role="tab" data-h="fintab" data-v="${k}" aria-selected="${st.finTab===k}">${l}</button>`).join('')}</div>${sub}`;
+  }
+  function rangeBar(){
+    const R = rangeOf(), r = st.range;
+    return `<div class="hb-range"><div class="hb-chips">${[['month','Este mês'],['last','Mês passado'],['3m','3 meses'],['year','Este ano'],['custom','Escolher datas']].map(([k,l]) => `<button class="hb-chip${r.preset===k?' on':''}" data-h="range" data-v="${k}">${l}</button>`).join('')}</div>
+      ${r.preset==='custom' ? `<div class="hb-two dates"><label class="hb-field"><span>De</span><input class="inp" type="date" data-in="rfrom" value="${R.from}"></label><label class="hb-field"><span>Até</span><input class="inp" type="date" data-in="rto" value="${R.to}"></label></div>` : ''}
+      <p class="hb-hint">${IC.cal}<span>${esc(R.label)}</span></p></div>`;
+  }
+  function finOverview(){
+    const R = rangeOf(), t = today();
+    const due = st.payments.filter(p => inRange(p.due_date, R));
+    const paidIn = st.payments.filter(p => inRange(p.paid_at, R));
+    const received = sumOf(paidIn), lateR = sumOf(due.filter(p => payStatus(p)==='late')), openR = sumOf(due.filter(p => !p.paid_at && payStatus(p)!=='late'));
+    const expected = sumOf(due), paidDue = due.filter(p => p.paid_at), onTime = paidDue.filter(p => p.paid_at <= p.due_date).length;
+    const punct = paidDue.length ? Math.round(onTime / paidDue.length * 100) : null;
+    const pct = v => expected ? Math.min(100, Math.max(0, v/expected*100)) : 0;
     const allLate = st.payments.filter(p => payStatus(p)==='late').sort((a,b)=>a.due_date.localeCompare(b.due_date));
-    const lateSum = allLate.reduce((a,p)=>a+(Number(p.amount)||0),0);
+    const todayDue = st.payments.filter(p => !p.paid_at && p.due_date === t);
+    const week = upcoming(7).filter(p => p.due_date > t);
+    const noPhone = st.students.filter(s => s.status==='active' && !s.phone);
+    const paidToday = st.payments.filter(p => p.paid_at === t);
+    const next = upcoming(30);
+    const hist = Array.from({length:6}, (_,i) => addMonths(ymOf(t), i-5)).map(m => { const r = st.payments.filter(p => ymOf(p.due_date)===m); return { m, exp: sumOf(r), got: sumOf(r.filter(p=>p.paid_at)) }; });
+    const max = Math.max(1, ...hist.map(h => h.exp));
+    const alerts = [
+      allLate.length && `<button class="hb-note bad" data-h="go-late">${IC.alert}<span><b>${allLate.length} ${allLate.length===1?'mensalidade atrasada':'mensalidades atrasadas'}</b><small>${brl(sumOf(allLate))} em aberto · toque para cobrar</small></span></button>`,
+      todayDue.length && `<button class="hb-note warn" data-h="go-charges">${IC.bell}<span><b>${todayDue.length} ${todayDue.length===1?'vence hoje':'vencem hoje'}</b><small>${todayDue.map(p => esc(studentById(p.student_id)?.name.split(' ')[0]||'')).join(', ')}</small></span></button>`,
+      week.length && `<button class="hb-note info" data-h="go-next">${IC.cal}<span><b>${week.length} nos próximos 7 dias</b><small>${brl(sumOf(week))} previstos · mande um lembrete</small></span></button>`,
+      paidToday.length && `<div class="hb-note ok">${IC.check}<span><b>${paidToday.length} ${paidToday.length===1?'pagamento recebido':'pagamentos recebidos'} hoje</b><small>${brl(sumOf(paidToday))}</small></span></div>`,
+      noPhone.length && `<button class="hb-note muted" data-h="stu" data-id="${noPhone[0].id}">${IC.wa}<span><b>${noPhone.length} ${noPhone.length===1?'aluno sem WhatsApp':'alunos sem WhatsApp'}</b><small>Cadastre para mandar lembretes · ${noPhone.slice(0,3).map(s=>esc(s.name.split(' ')[0])).join(', ')}</small></span></button>`,
+    ].filter(Boolean);
+    return `${rangeBar()}
+      <div class="hb-stats fin">
+        <div class="hb-stat" style="--c:#22C55E"><small>Recebido</small><b>${brl(received)}</b><i>${paidIn.length} ${paidIn.length===1?'pagamento':'pagamentos'}</i></div>
+        <div class="hb-stat" style="--c:#6366F1"><small>A receber</small><b>${brl(openR)}</b><i>no período</i></div>
+        <div class="hb-stat" style="--c:#EF4444"><small>Atrasado</small><b>${brl(lateR)}</b><i>no período</i></div>
+        <div class="hb-stat" style="--c:#8B5CF6"><small>Pontualidade</small><b>${punct===null ? '—' : punct+'%'}</b><i>pagos até o vencimento</i></div>
+      </div>
+      <div class="hb-bar" aria-label="Recebido ${Math.round(pct(sumOf(paidDue)))}% do previsto"><i class="ok" style="width:${pct(sumOf(paidDue))}%"></i><i class="bad" style="width:${pct(lateR)}%"></i><i class="info" style="width:${pct(openR)}%"></i></div>
+      <p class="hb-hint center">${expected ? `${brl(sumOf(paidDue))} de ${brl(expected)} previstos no período (${Math.round(pct(sumOf(paidDue)))}%)` : 'Nenhuma cobrança com vencimento no período'}</p>
+      <section class="hb-box"><div class="hb-sec-h"><h3>${IC.bell}Avisos</h3></div>${alerts.length ? `<div class="hb-notes-list">${alerts.join('')}</div>` : `<p class="hb-hint">Tudo em dia. Nenhum aviso agora.</p>`}</section>
+      <section class="hb-box" id="hb-next"><div class="hb-sec-h"><h3>${IC.cal}Próximas mensalidades</h3><small class="hb-muted">30 dias · ${brl(sumOf(next))}</small></div>
+        ${next.length ? `<div class="hb-timeline">${next.map(p => { const s = studentById(p.student_id); if (!s) return ''; const d = daysBetween(t, p.due_date); return `<div class="hb-tl" style="--c:${colorFor(s.id,s.color)}"><span class="hb-tl-date"><b>${parse(p.due_date).getDate()}</b><small>${MON[parse(p.due_date).getMonth()]}</small></span>
+          <span class="hb-rmain"><b>${esc(s.name)}</b><small>${d===0?'hoje':d===1?'amanhã':'em '+d+' dias'}${p.virtual?' · ainda não gerada':''}</small></span><span class="hb-amt">${brl(p.amount)}</span>
+          ${p.virtual ? '' : `<button class="hb-icon sm wa" data-h="card" data-id="${p.id}" aria-label="Mandar lembrete para ${esc(s.name)}">${IC.wa}</button>`}</div>`; }).join('')}</div>` : `<p class="hb-hint">Nada vence nos próximos 30 dias.</p>`}
+      </section>
+      <section class="hb-box"><h3>Últimos 6 meses</h3>
+        <div class="hb-chart">${hist.map(h => `<div class="hb-col" title="${monthName(h.m)}: recebido ${brl(h.got)} de ${brl(h.exp)}"><b class="hb-colv">${h.got ? brl(h.got).replace(',00','').replace('R$','').trim() : ''}</b><div class="hb-bars"><i class="exp" style="height:${h.exp/max*100}%"></i><i class="got" style="height:${h.got/max*100}%"></i></div><small>${MON[+h.m.slice(5)-1]}</small></div>`).join('')}</div>
+        <div class="hb-legend"><span><i class="got"></i>Recebido</span><span><i class="exp"></i>Cobrado</span></div>
+      </section>
+      <div class="hb-tool"><button class="btn sm" data-h="extra">${IC.plus}Cobrança avulsa</button><button class="btn sm" data-h="settings">${IC.gear}Ajustes de cobrança</button></div>`;
+  }
+  function finCharges(){
+    const ym = st.month, rows = monthRows(ym);
+    const paid = sumOf(rows.filter(p => p.paid_at)), late = sumOf(rows.filter(p => !p.virtual && payStatus(p)==='late')), total = sumOf(rows), toGet = total - paid - late;
+    const allLate = st.payments.filter(p => payStatus(p)==='late').sort((a,b)=>a.due_date.localeCompare(b.due_date));
     const soon = rows.filter(p => !p.virtual && payStatus(p)==='soon'), open = rows.filter(p => p.virtual || payStatus(p)==='open'), paidRows = rows.filter(p => p.paid_at);
     const pct = v => total ? Math.max(0, v/total*100) : 0;
-    // últimos 6 meses
-    const hist = Array.from({length:6}, (_,i) => addMonths(ymOf(today()), i-5)).map(m => { const r = st.payments.filter(p => ymOf(p.due_date)===m); return { m, exp: r.reduce((a,p)=>a+(Number(p.amount)||0),0), got: r.filter(p=>p.paid_at).reduce((a,p)=>a+(Number(p.amount)||0),0) }; });
-    const max = Math.max(1, ...hist.map(h => h.exp));
-    const group = (title, list, cls) => list.length ? `<section class="hb-group ${cls}"><h3><span></span>${title}<small>${list.length} · ${brl(list.reduce((a,p)=>a+(Number(p.amount)||0),0))}</small></h3><div class="hb-list tight">${list.map(p => payRow(p)).join('')}</div></section>` : '';
-    if (!st.students.length) return `<div class="hb-empty big"><h3>Seu financeiro começa pelos alunos</h3><p>Cadastre os alunos com a mensalidade e o dia do vencimento. As cobranças aparecem aqui sozinhas todo mês, com alerta de atraso e botão para cobrar no WhatsApp.</p><button class="btn primary" data-h="stu-new">${IC.plus}Cadastrar aluno</button></div>`;
+    const group = (title, list, cls) => list.length ? `<section class="hb-group ${cls}"><h3><span></span>${title}<small>${list.length} · ${brl(sumOf(list))}</small></h3><div class="hb-list tight">${list.map(p => payRow(p)).join('')}</div></section>` : '';
     return `
       <div class="hb-month"><button class="hb-icon" data-h="month" data-v="-1" aria-label="Mês anterior">${IC.left}</button><b>${monthName(ym)}</b><button class="hb-icon" data-h="month" data-v="1" aria-label="Próximo mês">${IC.right}</button></div>
-      ${allLate.length ? `<button class="hb-alert" data-h="scroll-late">${IC.alert}<span><b>${allLate.length} ${allLate.length===1?'cobrança atrasada':'cobranças atrasadas'}</b><small>Somando ${brl(lateSum)}. Toque para ver e cobrar.</small></span></button>` : ''}
-      <div class="hb-stats fin">
-        <div class="hb-stat" style="--c:#22C55E"><small>Recebido</small><b>${brl(paid)}</b></div>
-        <div class="hb-stat" style="--c:#6366F1"><small>${ym > ymOf(today()) ? 'Previsto' : 'A receber'}</small><b>${brl(toGet)}</b></div>
-        <div class="hb-stat" style="--c:#EF4444"><small>Atrasado no mês</small><b>${brl(late)}</b></div>
-        <div class="hb-stat" style="--c:#8B5CF6"><small>Total do mês</small><b>${brl(total)}</b></div>
-      </div>
-      <div class="hb-bar" aria-label="Recebido ${Math.round(pct(paid))}% do mês"><i class="ok" style="width:${pct(paid)}%"></i><i class="bad" style="width:${pct(late)}%"></i><i class="info" style="width:${pct(toGet)}%"></i></div>
-      <p class="hb-hint center">${total ? `${Math.round(pct(paid))}% do mês já recebido` : 'Nenhuma cobrança neste mês'}</p>
-      <div class="hb-tool"><button class="btn sm" data-h="extra">${IC.plus}Cobrança avulsa</button><button class="btn sm" data-h="settings">${IC.gear}Ajustes de cobrança</button></div>
-      <div id="hb-late">${group('Atrasadas', allLate, 'bad')}</div>
+      <div class="hb-mini"><span class="ok"><small>Recebido</small><b>${brl(paid)}</b></span><span class="info"><small>${ym > ymOf(today()) ? 'Previsto' : 'A receber'}</small><b>${brl(toGet)}</b></span><span class="bad"><small>Atrasado</small><b>${brl(late)}</b></span></div>
+      <div class="hb-bar"><i class="ok" style="width:${pct(paid)}%"></i><i class="bad" style="width:${pct(late)}%"></i><i class="info" style="width:${pct(toGet)}%"></i></div>
+      ${allLate.length ? `<div id="hb-late">${group('Atrasadas (todos os meses)', allLate, 'bad')}</div>` : ''}
       ${group('Vencem nos próximos dias', soon, 'warn')}
       ${group(ym > ymOf(today()) ? 'Previstas' : 'A vencer', open, 'info')}
       ${group('Pagas', paidRows, 'ok')}
-      <section class="hb-box"><h3>Últimos 6 meses</h3>
-        <div class="hb-chart">${hist.map(h => `<div class="hb-col" title="${monthName(h.m)}: recebido ${brl(h.got)} de ${brl(h.exp)}"><div class="hb-bars"><i class="exp" style="height:${h.exp/max*100}%"></i><i class="got" style="height:${h.got/max*100}%"></i></div><small>${MON[+h.m.slice(5)-1]}</small></div>`).join('')}</div>
-        <div class="hb-legend"><span><i class="got"></i>Recebido</span><span><i class="exp"></i>Cobrado</span></div>
-      </section>`;
+      ${!rows.length && !allLate.length ? `<div class="hb-empty"><p>Nenhuma cobrança em ${monthName(ym)}.</p></div>` : ''}
+      <div class="hb-tool"><button class="btn sm" data-h="extra">${IC.plus}Cobrança avulsa</button></div>`;
+  }
+  function finHistory(){
+    const R = rangeOf(), q = st.hq.trim().toLowerCase();
+    const list = st.payments.filter(p => inRange(p.paid_at, R) && p.method!=='isento' && (!q || (studentById(p.student_id)?.name||'').toLowerCase().includes(q))).sort((a,b)=>b.paid_at.localeCompare(a.paid_at));
+    const byMethod = METHODS.map(([k,l]) => [l, sumOf(list.filter(p => p.method===k))]).filter(x => x[1]);
+    const byMonth = {}; list.forEach(p => (byMonth[ymOf(p.paid_at)] ||= []).push(p));
+    return `${rangeBar()}
+      <div class="hb-tool"><input class="inp hb-search" type="search" placeholder="Filtrar por aluno" value="${esc(st.hq)}" data-in="hq" aria-label="Filtrar histórico por aluno"><button class="btn sm" data-h="csv">${IC.down}Exportar</button></div>
+      <div class="hb-total"><span><small>Total recebido</small><b>${brl(sumOf(list))}</b></span><span><small>Pagamentos</small><b>${list.length}</b></span></div>
+      ${byMethod.length ? `<div class="hb-methods-sum">${byMethod.map(([l,v]) => `<span><small>${l}</small><b>${brl(v)}</b></span>`).join('')}</div>` : ''}
+      ${list.length ? Object.keys(byMonth).sort().reverse().map(m => `<section class="hb-group ok"><h3><span></span>${monthName(m)}<small>${byMonth[m].length} · ${brl(sumOf(byMonth[m]))}</small></h3><div class="hb-list tight">${byMonth[m].map(p => payRow(p)).join('')}</div></section>`).join('')
+        : `<div class="hb-empty"><p>Nenhum pagamento recebido nesse período.</p></div>`}`;
+  }
+  function finMap(){
+    const t = today(), months = Array.from({length:6}, (_,i) => addMonths(ymOf(t), i-5));
+    const studs = st.students.filter(s => s.status==='active' || st.payments.some(p => p.student_id===s.id && months.includes(p.period)));
+    const cell = (s, m) => {
+      const p = st.payments.find(x => x.student_id===s.id && x.period===m);
+      if (!p) return `<span class="hb-cell none" title="${monthName(m)}: sem cobrança">·</span>`;
+      const k = payStatus(p);
+      return `<button class="hb-cell ${k}" data-h="cell" data-id="${p.id}" title="${esc(s.name)} · ${monthName(m)}: ${STATUS[k][0]} · ${brl(p.amount)}">${k==='paid' ? IC.check : k==='late' ? '!' : ''}</button>`;
+    };
+    return `<p class="hb-hint">Cada quadradinho é uma mensalidade. Toque para cobrar, mandar recibo ou marcar como paga.</p>
+      <div class="hb-map"><div class="hb-map-row head"><span></span>${months.map(m => `<small>${MON[+m.slice(5)-1]}</small>`).join('')}</div>
+      ${studs.map(s => `<div class="hb-map-row"><button class="hb-map-name" data-h="stu" data-id="${s.id}">${avatar(s.name, colorFor(s.id,s.color), 'sm')}<span>${esc(s.name.split(' ')[0])}</span></button>${months.map(m => cell(s, m)).join('')}</div>`).join('')}</div>
+      <div class="hb-legend wrap"><span><i class="c paid"></i>Pago</span><span><i class="c late"></i>Atrasado</span><span><i class="c soon"></i>Vence logo</span><span><i class="c open"></i>A vencer</span><span><i class="c none"></i>Sem cobrança</span></div>`;
+  }
+
+  /* ---------- capinha (imagem) para lembrete e recibo ---------- */
+  const F1 = 'M40.6 27H67.2Q70.6 27 70.6 30.4V34.4Q70.6 39.6 65.4 39.6H33.2Q30.6 39.6 32.2 37.6L38.4 28.6Q39.3 27 40.6 27Z';
+  const F2 = 'M50.2 45.6H61.2Q64.6 45.6 64.6 49V53.6Q64.6 57.2 61 57.2H50.6Q48.4 57.2 47 59L40.6 67Q38.8 69.2 36 69.2H34Q31 69.2 31 66.4V61Q31 58.2 34 58.2H36.4Q38.6 58.2 39.8 56.7L46.8 47.4Q48.1 45.6 50.2 45.6Z';
+  function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+  function blob(c, x, y, r, col, a){ const g = c.createRadialGradient(x,y,0,x,y,r); g.addColorStop(0, col); g.addColorStop(1, 'rgba(255,255,255,0)'); c.globalAlpha = a; c.fillStyle = g; c.fillRect(x-r,y-r,r*2,r*2); c.globalAlpha = 1; }
+  function fitText(c, text, max, size, weight, family){ let s = size; do { c.font = `${weight} ${s}px ${family}`; s -= 2; } while (c.measureText(text).width > max && s > 20); return c.font; }
+  async function drawCard(p){
+    const s = studentById(p.student_id), receipt = !!p.paid_at, k = payStatus(p);
+    const W_ = window.FluidWeb, W = 1080, H = 1350, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
+    try { await document.fonts.ready; } catch(e){}
+    const FD = '"Sora", "Instrument Sans", system-ui, sans-serif', FB = '"Instrument Sans", system-ui, sans-serif';
+    const accent = receipt ? '#16A34A' : k==='late' ? '#E11D48' : '#7C3AED';
+    // fundo
+    const bg = c.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#F8F8FD'); bg.addColorStop(1,'#EEF0FA'); c.fillStyle = bg; c.fillRect(0,0,W,H);
+    blob(c, 120, 140, 520, '#5EEAC0', .55); blob(c, 980, 260, 520, '#C4B5FD', .6); blob(c, 900, 1260, 600, '#F9A8D4', .55); blob(c, 140, 1200, 500, '#A5F3FC', .5);
+    // cartão de vidro
+    c.save(); c.shadowColor = 'rgba(60,50,140,.16)'; c.shadowBlur = 60; c.shadowOffsetY = 24; rr(c, 80, 90, W-160, H-180, 64); c.fillStyle = 'rgba(255,255,255,.62)'; c.fill(); c.restore();
+    rr(c, 80, 90, W-160, H-180, 64); c.lineWidth = 2; c.strokeStyle = 'rgba(255,255,255,.9)'; c.stroke();
+    // logo F
+    const L = 92, lx = 150, ly = 165;
+    rr(c, lx, ly, L, L, 28); const lg = c.createLinearGradient(lx, ly, lx+L, ly+L); lg.addColorStop(0,'rgba(255,255,255,.95)'); lg.addColorStop(1,'rgba(237,233,254,.9)'); c.fillStyle = lg; c.fill();
+    rr(c, lx, ly, L, L, 28); const lb = c.createLinearGradient(lx, ly, lx+L, ly); lb.addColorStop(0,'#34E0BE'); lb.addColorStop(.5,'#8B5CF6'); lb.addColorStop(1,'#F43F7E'); c.strokeStyle = lb; c.lineWidth = 3; c.stroke();
+    c.save(); c.translate(lx, ly); c.scale(L/100, L/100); const fg = c.createLinearGradient(30,62,72,30); fg.addColorStop(0,'#1FC8A8'); fg.addColorStop(.5,'#9A5BE6'); fg.addColorStop(1,'#E5245E'); c.fillStyle = fg; c.fill(new Path2D(F1)); c.fill(new Path2D(F2)); c.restore();
+    c.fillStyle = '#12131C'; c.font = `500 52px "Quicksand", ${FD}`; c.textBaseline = 'middle'; c.fillText('Fluid', lx + L + 26, ly + L/2 + 2);
+    // selo
+    const tag = receipt ? 'RECIBO DE PAGAMENTO' : k==='late' ? 'MENSALIDADE EM ABERTO' : 'LEMBRETE DE MENSALIDADE';
+    c.font = `700 26px ${FB}`; const tw = c.measureText(tag).width + 52; const ty = 340;
+    rr(c, 150, ty, tw, 56, 28); c.fillStyle = accent + '1F'; c.fill(); c.fillStyle = accent; c.textBaseline = 'middle'; c.fillText(tag, 176, ty + 29);
+    // aluno e descrição
+    const desc = p.description || (/^\d{4}-\d{2}$/.test(p.period) ? 'Mensalidade de ' + MONTHS[+p.period.slice(5)-1] + ' de ' + p.period.slice(0,4) : 'Cobrança');
+    c.textBaseline = 'alphabetic'; c.fillStyle = '#12131C'; c.font = fitText(c, s.name, W-300, 72, 600, FD); c.fillText(s.name, 150, 500);
+    c.fillStyle = '#5B6075'; c.font = `400 38px ${FB}`; c.fillText(desc, 150, 560);
+    // valor
+    c.fillStyle = '#12131C'; c.font = fitText(c, brl(p.amount), W-300, 150, 700, FD); c.fillText(brl(p.amount), 146, 740);
+    // linha
+    c.fillStyle = 'rgba(20,22,60,.08)'; c.fillRect(150, 810, W-300, 2);
+    // detalhes
+    const rows = receipt
+      ? [['Pago em', fullDate(p.paid_at)], ['Forma', (METHODS.find(m=>m[0]===p.method)||[,'—'])[1]], ['Vencimento', fullDate(p.due_date)]]
+      : [['Vencimento', fullDate(p.due_date) + (k==='late' ? '  ·  em atraso' : '')], st.settings.pix_key ? ['Chave Pix', st.settings.pix_key] : null, ['Aulas', scheduleText(s)]].filter(Boolean);
+    rows.forEach(([a,b], i) => { const y = 890 + i*92; c.fillStyle = '#7A7F95'; c.font = `500 30px ${FB}`; c.fillText(a, 150, y); c.fillStyle = (a==='Vencimento' && k==='late' && !receipt) ? '#E11D48' : '#12131C'; c.font = fitText(c, b, W-560, 36, 600, FB); c.textAlign = 'right'; c.fillText(b, W-150, y); c.textAlign = 'left'; });
+    // rodapé
+    c.fillStyle = '#7A7F95'; c.font = `500 28px ${FB}`; c.fillText('Prof. ' + (W_ && W_.me ? W_.me().name : ''), 150, H-170);
+    c.fillStyle = '#A0A4B8'; c.font = `400 26px ${FB}`; c.fillText(receipt ? 'Obrigado pela pontualidade!' : 'Aulas de violão · enviado pelo Fluid', 150, H-128);
+    return new Promise(res => cv.toBlob(b => res({ blob: b, url: URL.createObjectURL(b) }), 'image/png'));
+  }
+  function receiptText(p, s){
+    const desc = p.description || (/^\d{4}-\d{2}$/.test(p.period) ? 'mensalidade de ' + MONTHS[+p.period.slice(5)-1] : 'cobrança');
+    return `Oi ${s.name.split(' ')[0]}! Recebi o pagamento da ${desc}, no valor de ${brl(p.amount)}, em ${fullDate(p.paid_at)}. Obrigado!`;
+  }
+  function viewCard(v){
+    const p = st.payments.find(x => x.id===v.id); if (!p) return `<div class="hb-empty"><p>Cobrança não encontrada.</p></div>`;
+    const s = studentById(p.student_id), receipt = !!p.paid_at;
+    if (v.text === undefined) v.text = receipt ? receiptText(p, s) : chargeText(p, s);
+    if (!v.img && !v.loading){ v.loading = true; drawCard(p).then(r => { v.img = r.url; v.blob = r.blob; v.loading = false; draw(); }); }
+    const canFiles = !!(navigator.canShare && v.blob && navigator.canShare({ files:[new File([v.blob], 'fluid.png', { type:'image/png' })] }));
+    return `<div class="hb-form">
+      <h2>${receipt ? 'Recibo para ' : (payStatus(p)==='late' ? 'Cobrar ' : 'Lembrete para ')}${esc(s.name.split(' ')[0])}</h2>
+      <div class="hb-cardprev">${v.img ? `<img src="${v.img}" alt="Capinha do Fluid com ${receipt?'o recibo':'o lembrete'} de ${esc(s.name)}">` : '<div class="hb-cardload">Montando a capinha…</div>'}</div>
+      <label class="hb-field"><span>Mensagem</span><textarea class="inp" rows="4" data-in="ctext">${esc(v.text)}</textarea></label>
+      <div class="hb-share col">
+        ${canFiles ? `<button class="btn hb-wa" data-h="share-card">${IC.share}Enviar capinha + mensagem</button>` : ''}
+        ${s.phone ? `<a class="btn ${canFiles?'':'hb-wa'}" href="https://wa.me/${phoneDigits(s.phone)}?text=${encodeURIComponent(v.text)}" target="_blank" rel="noopener">${IC.wa}Só a mensagem no WhatsApp</a>` : `<p class="hb-hint">${esc(s.name.split(' ')[0])} não tem WhatsApp cadastrado. <button class="linkish" data-h="stu-edit" data-id="${s.id}">Cadastrar</button></p>`}
+        ${v.img ? `<a class="btn" href="${v.img}" download="fluid-${receipt?'recibo':'lembrete'}-${esc(s.name.split(' ')[0].toLowerCase())}-${p.due_date}.png">${IC.down}Baixar capinha</a>` : ''}
+      </div>
+      <p class="hb-hint">${canFiles ? 'No celular, escolha o WhatsApp e o contato: a capinha vai junto com a mensagem.' : 'Baixe a capinha e anexe no WhatsApp, ou mande só a mensagem.'}</p>
+    </div>`;
+  }
+  function viewPayEdit(v){
+    const p = st.payments.find(x => x.id===v.id); if (!p) return '';
+    const s = studentById(p.student_id);
+    return `<form class="hb-form" data-form="payedit"><h2>Editar cobrança</h2><p class="hb-hint">${esc(s.name)}</p>
+      <label class="hb-field"><span>Descrição</span><input class="inp" name="description" maxlength="80" value="${esc(p.description||'')}" placeholder="${/^\d{4}-\d{2}$/.test(p.period) ? 'Mensalidade de ' + MONTHS[+p.period.slice(5)-1] : ''}"></label>
+      <div class="hb-two"><label class="hb-field"><span>Valor (R$)</span><input class="inp" name="amount" type="number" min="0" step="0.01" inputmode="decimal" value="${Number(p.amount)}"><small>Dê desconto ou ajuste o valor só desta cobrança.</small></label>
+        <label class="hb-field"><span>Vencimento</span><input class="inp" name="due_date" type="date" value="${p.due_date}"></label></div>
+      <div class="hb-form-act"><button class="btn primary" type="submit">Salvar</button><button class="btn ghost" type="button" data-h="back">Cancelar</button></div>
+      <div class="hb-danger"><p>Excluir tira esta cobrança do financeiro (por exemplo, mês de férias). ${/^\d{4}-\d{2}$/.test(p.period) ? 'Ela não volta a ser gerada.' : ''}</p><button class="btn ghost danger sm" type="button" data-h="paydel" data-id="${p.id}">${v.armed ? 'Toque de novo para excluir' : 'Excluir cobrança'}</button></div></form>`;
   }
   function viewExtra(v){
     const act = st.students.filter(s => s.status==='active' || s.id===v.id);
@@ -437,7 +608,7 @@
       <button class="btn ghost danger" data-h="signout">Sair da conta</button>`;
   }
 
-  const VIEWS = { nbform: viewFolderForm, invite: viewInvite, student: viewStudent, sform: viewStudentForm, extra: viewExtra, settings: viewSettings };
+  const VIEWS = { card: viewCard, payedit: viewPayEdit, nbform: viewFolderForm, invite: viewInvite, student: viewStudent, sform: viewStudentForm, extra: viewExtra, settings: viewSettings };
 
   /* ---------- ações ---------- */
   const go = (view) => { view.back = st.view; st.view = view; st.resetScroll = true; draw(); const b = root.querySelector('.hb-body'); if (b) b.scrollTop = 0; };
@@ -483,6 +654,25 @@
       case 'pay': return run(async () => { const p = st.payments.find(x => x.id===id); const upd = { paid_at: today(), method: v }; must(await sb.from('payments').update(upd).eq('id', id)); Object.assign(p, upd); st.payOpen = null; updateBadge(); say('Pagamento registrado ' + brl(p.amount)); });
       case 'unpay': return run(async () => { const p = st.payments.find(x => x.id===id); must(await sb.from('payments').update({ paid_at: null, method: null }).eq('id', id)); p.paid_at = null; p.method = null; updateBadge(); say('Pagamento desfeito'); });
       case 'month': st.month = addMonths(st.month, +v); return draw();
+      case 'fintab': st.finTab = v; st.resetScroll = true; return draw();
+      case 'range': st.range = v==='custom' ? { preset:'custom', from: rangeOf().from, to: rangeOf().to } : { preset:v }; return draw();
+      case 'go-late': st.finTab = 'cobrancas'; draw(); setTimeout(() => { const el = root.querySelector('#hb-late'); el && el.scrollIntoView({ behavior:'smooth', block:'start' }); }, 50); return;
+      case 'go-charges': st.finTab = 'cobrancas'; st.month = ymOf(today()); return draw();
+      case 'go-next': { const el = root.querySelector('#hb-next'); el && el.scrollIntoView({ behavior:'smooth', block:'start' }); return; }
+      case 'card': return go({ type:'card', id });
+      case 'cell': { const p = st.payments.find(x => x.id===id); return go(p && p.paid_at ? { type:'card', id } : { type:'student', id: p.student_id }); }
+      case 'share-card': { const vv = st.view; try { await navigator.share({ files:[new File([vv.blob], 'fluid.png', { type:'image/png' })], text: vv.text }); } catch(err){} return; }
+      case 'payedit': return go({ type:'payedit', id });
+      case 'paydel': if (!st.view.armed){ st.view.armed = true; return draw(); }
+        return run(async () => { const p = st.payments.find(x => x.id===id);
+          if (/^\d{4}-\d{2}$/.test(p.period)){ must(await sb.from('payments').update({ amount: 0, description: 'Sem cobrança (excluída)', paid_at: p.due_date, method: 'isento' }).eq('id', id)); Object.assign(p, { amount:0, description:'Sem cobrança (excluída)', paid_at:p.due_date, method:'isento' }); }
+          else { must(await sb.from('payments').delete().eq('id', id)); st.payments = st.payments.filter(x => x.id!==id); }
+          updateBadge(); back(); say('Cobrança excluída'); });
+      case 'csv': {
+        const R = rangeOf(); const list = st.payments.filter(p => inRange(p.paid_at, R) && p.method!=='isento').sort((a,b)=>a.paid_at.localeCompare(b.paid_at));
+        const q = x => '"' + String(x ?? '').replace(/"/g,'""') + '"';
+        const csv = ['Aluno;Descrição;Vencimento;Pago em;Forma;Valor'].concat(list.map(p => { const s = studentById(p.student_id); return [q(s?.name), q(p.description || (/^\d{4}-\d{2}$/.test(p.period) ? 'Mensalidade de ' + MONTHS[+p.period.slice(5)-1] : 'Cobrança')), q(fullDate(p.due_date)), q(fullDate(p.paid_at)), q((METHODS.find(m=>m[0]===p.method)||[,p.method])[1]), q(String(Number(p.amount).toFixed(2)).replace('.',','))].join(';'); })).join('\n');
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff'+csv], { type:'text/csv' })); a.download = `fluid-pagamentos-${R.from}-a-${R.to}.csv`; a.click(); return say('Planilha baixada'); }
       case 'scroll-late': { const el = root.querySelector('#hb-late'); el && el.scrollIntoView({ behavior:'smooth', block:'start' }); return; }
       case 'extra': return go({ type:'extra', id });
       case 'settings': return go({ type:'settings' });
@@ -502,6 +692,9 @@
   }
   function onInput(e){
     const t = e.target;
+    if (t.dataset.in === 'ctext'){ if (st.view) st.view.text = t.value; return; }
+    if (t.dataset.in === 'rfrom' || t.dataset.in === 'rto'){ if (e.type !== 'change') return; st.range[t.dataset.in==='rfrom'?'from':'to'] = t.value; return draw(); }
+    if (t.dataset.in === 'hq'){ st.hq = t.value; const pos = t.selectionStart; draw(); const n = root.querySelector('[data-in="hq"]'); if (n){ n.focus(); try { n.setSelectionRange(pos,pos); } catch(err){} } return; }
     if (t.dataset.in === 'q'){ st.q = t.value; const pos = t.selectionStart; draw(); const n = root.querySelector('[data-in="q"]'); if (n){ n.focus(); try { n.setSelectionRange(pos,pos); } catch(err){} } return; }
     if (st.view && st.view.draft && t.name && t.form && t.form.dataset.form==='stu' && t.type !== 'hidden') st.view.draft[t.name] = t.value;
   }
@@ -534,6 +727,11 @@
       st.students.push(created); st.students.sort((a,b)=>a.name.localeCompare(b.name));
       if (fd.mknb) await makeStudentFolder(created);
       await ensureCharges(); updateBadge(); st.tab = 'alunos'; st.view = { type:'student', id: created.id }; say('Cadastro salvo: ' + created.name.split(' ')[0]);
+    });
+    if (kind==='payedit') return run(async () => {
+      const p = st.payments.find(x => x.id===st.view.id);
+      const upd = { description: fd.description.trim() || null, amount: Number(String(fd.amount).replace(',','.'))||0, due_date: fd.due_date || p.due_date };
+      must(await sb.from('payments').update(upd).eq('id', p.id)); Object.assign(p, upd); updateBadge(); back(); say('Cobrança atualizada');
     });
     if (kind==='extra') return run(async () => {
       const row = { student_id: fd.student, period: 'x-' + Date.now().toString(36), description: fd.description.trim(), amount: Number(String(fd.amount).replace(',','.'))||0, due_date: fd.due_date };
@@ -568,6 +766,7 @@
   .hb-dot{min-width:18px;height:18px;padding:0 5px;border-radius:999px;font-size:11px;color:#fff;display:inline-flex;align-items:center;justify-content:center}
   .hb-dot.bad{background:#EF4444}.hb-dot.warn{background:#F59E0B}
   .hb-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 16px calc(28px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+  .hb-body>*{flex-shrink:0}
   .hb-body h2{font-family:var(--fDisplay);font-size:20px;margin:0}
   .hb-body h3{font-family:var(--fDisplay);font-size:15px;margin:0;display:flex;align-items:center;gap:8px}
   .hb-body h3 svg{width:17px;height:17px;color:var(--accent)}
@@ -708,6 +907,67 @@
   .hub-chip em{position:absolute;top:-5px;left:30px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;font-style:normal;font-size:11px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;background:#EF4444;box-shadow:0 0 0 2px var(--bg)}
   .hub-chip em.warn{background:#F59E0B}
   @media (max-width:520px){.hub-chip{padding:0 4px;gap:0;height:46px}.hub-tx,.hub-chev{display:none}}
+
+  .hb-subtabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .hb-subtabs::-webkit-scrollbar{display:none}
+  .hb-subtabs button{min-width:0;height:36px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:999px;border:1px solid var(--line);background:transparent;font-size:13px;font-weight:600;color:var(--muted)}
+  .hb-subtabs button[aria-selected="true"]{background:var(--text);color:var(--bg);border-color:transparent}
+  .hb-range{display:flex;flex-direction:column;gap:8px}
+  .hb-range .hb-chips{margin:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+  .hb-range .hb-chips::-webkit-scrollbar{display:none}
+  .hb-range .hb-chip{flex-shrink:0;--c:var(--accent);background:transparent}
+  .hb-range .hb-chip.on{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:var(--accentInk);font-weight:600}
+  .hb-range .hb-hint{display:flex;align-items:center;gap:6px;margin:0}.hb-range .hb-hint svg{width:15px;height:15px}
+  .hb-two.dates .inp{height:42px}
+  .hb-stat i{display:block;font-style:normal;font-size:11.5px;color:var(--muted);margin-top:2px}
+  .hb-muted{font-size:12.5px;color:var(--muted);font-weight:600}
+  .hb-notes-list{display:flex;flex-direction:column;gap:8px}
+  .hb-note{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:11px 13px;border-radius:16px;border:1px solid transparent;color:var(--text);font:inherit}
+  .hb-note svg{width:20px;height:20px;flex-shrink:0}
+  .hb-note b{display:block;font-size:14px}.hb-note small{display:block;font-size:12.5px;color:var(--muted)}
+  .hb-note.bad{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.25)}.hb-note.bad svg{color:#EF4444}
+  .hb-note.warn{background:rgba(245,158,11,.11);border-color:rgba(245,158,11,.28)}.hb-note.warn svg{color:#F59E0B}
+  .hb-note.info{background:color-mix(in srgb,#6366F1 9%,transparent);border-color:color-mix(in srgb,#6366F1 22%,transparent)}.hb-note.info svg{color:#6366F1}
+  .hb-note.ok{background:rgba(34,197,94,.10);border-color:rgba(34,197,94,.25)}.hb-note.ok svg{color:#16A34A}
+  .hb-note.muted{background:var(--glass2,var(--surface2));border-color:var(--line)}.hb-note.muted svg{color:#25D366}
+  .hb-timeline{display:flex;flex-direction:column;gap:6px}
+  .hb-tl{display:flex;align-items:center;gap:12px;padding:8px 10px 8px 8px;border-radius:16px;background:var(--glass2,var(--surface2));border:1px solid var(--line)}
+  .hb-tl-date{width:46px;height:48px;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;background:color-mix(in srgb,var(--c) 14%,transparent);color:color-mix(in srgb,var(--c) 80%,var(--text))}
+  .hb-tl-date b{font-family:var(--fDisplay);font-size:18px;line-height:1}.hb-tl-date small{font-size:11px;font-weight:600;text-transform:uppercase}
+  .hb-icon.wa{color:#fff;background:#25D366;border-color:transparent}
+  .hb-colv{font-size:10.5px;color:#16A34A;font-weight:700;min-height:14px}
+  .hb-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .hb-mini span{padding:10px 12px;border-radius:14px;border:1px solid var(--line)}
+  .hb-mini small{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .hb-mini b{display:block;font-family:var(--fDisplay);font-size:16px;margin-top:2px;font-variant-numeric:tabular-nums}
+  .hb-mini .ok{background:rgba(34,197,94,.08)}.hb-mini .ok small{color:#16A34A}
+  .hb-mini .info{background:color-mix(in srgb,#6366F1 8%,transparent)}.hb-mini .info small{color:#6366F1}
+  .hb-mini .bad{background:rgba(239,68,68,.08)}.hb-mini .bad small{color:#EF4444}
+  .hb-total{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}
+  .hb-total span{padding:14px;border-radius:18px;background:linear-gradient(150deg,rgba(34,197,94,.14),rgba(34,197,94,.04));border:1px solid rgba(34,197,94,.22)}
+  .hb-total span+span{background:var(--glass,var(--surface));border-color:var(--line)}
+  .hb-total small{display:block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  .hb-total b{display:block;font-family:var(--fDisplay);font-size:22px;margin-top:2px}
+  .hb-methods-sum{display:flex;gap:8px;flex-wrap:wrap}
+  .hb-methods-sum span{padding:8px 12px;border-radius:12px;background:var(--glass2,var(--surface2));border:1px solid var(--line)}
+  .hb-methods-sum small{display:block;font-size:11px;color:var(--muted)}.hb-methods-sum b{font-size:14px}
+  .hb-map{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:20px;background:var(--glass,var(--surface));border:1px solid var(--glassEdgeSoft,var(--line));overflow-x:auto}
+  .hb-map-row{display:grid;grid-template-columns:minmax(110px,1.4fr) repeat(6,minmax(34px,1fr));gap:6px;align-items:center}
+  .hb-map-row.head small{text-align:center;font-size:11.5px;font-weight:600;color:var(--muted);text-transform:capitalize}
+  .hb-map-name{display:flex;align-items:center;gap:8px;border:0;background:none;padding:0;color:var(--text);font-size:13.5px;font-weight:600;text-align:left;min-width:0}
+  .hb-map-name span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hb-cell{height:34px;border-radius:10px;border:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;padding:0}
+  .hb-cell svg{width:16px;height:16px}
+  .hb-cell.paid{background:linear-gradient(160deg,#4ADE80,#16A34A)}.hb-cell.late{background:linear-gradient(160deg,#F87171,#DC2626)}
+  .hb-cell.soon{background:linear-gradient(160deg,#FCD34D,#F59E0B)}.hb-cell.open{background:color-mix(in srgb,#6366F1 22%,transparent);border:1px solid color-mix(in srgb,#6366F1 40%,transparent)}
+  .hb-cell.none{background:var(--glass2,var(--surface2));color:var(--faint)}
+  .hb-legend.wrap{flex-wrap:wrap;gap:10px 14px}
+  .hb-legend i.c{width:12px;height:12px;border-radius:4px}.hb-legend i.c.paid{background:#22C55E}.hb-legend i.c.late{background:#EF4444}.hb-legend i.c.soon{background:#F59E0B}.hb-legend i.c.open{background:color-mix(in srgb,#6366F1 35%,transparent)}.hb-legend i.c.none{background:var(--line)}
+  .hb-cardprev{border-radius:22px;overflow:hidden;border:1px solid var(--line);background:var(--glass2,var(--surface2));aspect-ratio:4/5;max-width:340px;width:100%;align-self:center;box-shadow:0 20px 50px -24px rgba(60,50,140,.35)}
+  .hb-cardprev img{display:block;width:100%;height:100%;object-fit:cover}
+  .hb-cardload{height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
+  .hb-share.col{flex-direction:column}.hb-share.col .btn{width:100%;flex:none}
+  .linkish{border:0;background:none;padding:0;color:var(--accentInk);font-weight:600;text-decoration:underline;text-underline-offset:3px}
   `;
   const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
 
