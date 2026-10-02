@@ -938,6 +938,21 @@ body{background-attachment:fixed}
 .rec-x{width:32px;height:32px;border-radius:50%;border:0;background:transparent;color:var(--faint);display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
 .rec-x svg{width:14px;height:14px}.rec-x.armed{color:#fff;background:#E11D48}
 
+/* ===== tocar junto (vídeo flutuante) ===== */
+.along{position:fixed;z-index:40;right:16px;top:calc(70px + env(safe-area-inset-top,0px));width:min(340px,calc(100vw - 32px));border-radius:22px;overflow:hidden;background:var(--sheetBg,var(--surface));border:1px solid var(--glassEdge);box-shadow:var(--glassHi),0 24px 60px -18px rgba(20,22,60,.45);-webkit-backdrop-filter:blur(30px) saturate(1.7);backdrop-filter:blur(30px) saturate(1.7);animation:alIn .4s cubic-bezier(.2,1.2,.3,1) both}
+@keyframes alIn{from{opacity:0;transform:translateY(-12px) scale(.96)}to{opacity:1;transform:none}}
+.along>p{margin:0 14px 10px;font-size:13px;color:var(--muted)}
+.al-head{display:flex;align-items:center;justify-content:space-between;padding:12px 10px 6px 14px}.al-head b{font-size:14px}
+.al-row{display:flex;gap:8px;margin:0 14px 8px}.al-row .inp{flex:1;min-width:0;height:42px;border-radius:12px;padding:0 12px;font-size:13px}
+.al-find{display:block;margin:0 14px 14px;font-size:12.5px;font-weight:600;color:var(--accentInk)}
+.al-video{position:relative;aspect-ratio:16/9;background:#000}
+.al-video iframe,#al-frame{position:absolute;inset:0;width:100%;height:100%;border:0}
+.al-err{color:#fff;font-size:13px;padding:16px;margin:0}.al-err a{color:#A5B4FC}
+.al-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 8px 8px 10px}
+.al-x{width:34px;height:34px;border-radius:50%;border:0;background:var(--glass2);color:var(--muted);display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
+.al-x svg{width:15px;height:15px}
+@media (max-width:620px){.along{top:calc(62px + env(safe-area-inset-top,0px));right:12px;width:min(250px,64vw);border-radius:18px}.al-bar .seg button{padding:0 8px;font-size:12px}}
+
 /* @@END-EXTRAS-CSS@@ */
 </style>
 
@@ -2171,6 +2186,8 @@ function renderPractice(){
     <div class="pr-ctrl">
       <div class="bpm"><button class="btn icon" data-pr="bpm-" aria-label="Mais devagar">${I.minus}</button><output aria-live="polite">${p.bpm}<small>bpm</small></output><button class="btn icon" data-pr="bpm+" aria-label="Mais rápido">${I.plus}</button></div>
       <button class="play" data-pr="toggle" aria-label="${p.playing?'Pausar':'Tocar'}">${p.playing?I.pause:I.play}</button>
+      <button class="btn${along.show?' on-guide':''}" data-al="toggle" aria-pressed="${along.show}">${I.play}${along.show?'Música aberta':'Tocar com a música'}</button>
+      ${along.show ? `<button class="btn${p.mute?'':' on-guide'}" data-al="click" aria-pressed="${!p.mute}">${p.mute?'Clique desligado':'Clique ligado'}</button>` : ''}
       <button class="btn${p.guide?' on-guide':''}" data-pr="guide" aria-pressed="${p.guide}" title="Toca o acorde no primeiro tempo de cada troca">${I.speaker}Violão guia ${p.guide?'ligado':'desligado'}</button>
       <div class="seg" role="group" aria-label="Compassos por acorde">${[1,2,4].map(n=>`<button data-bpc="${n}" aria-pressed="${p.bpc===n}">${n} ${n===1?'compasso':'comp.'}</button>`).join('')}</div>
     </div>`;
@@ -2187,6 +2204,7 @@ function renderPractice(){
 }
 function slotDur(){ const p = practice; return p.meter==='6/8' ? 20/p.bpm : 30/p.bpm; }
 function click(time, accent, beat){
+  if (practice && practice.mute) return;
   const ctx = practice.ctx; const o = ctx.createOscillator(), g = ctx.createGain();
   o.frequency.value = accent ? 1760 : beat ? 1100 : 700; o.type = 'sine';
   const v = accent ? .5 : beat ? .32 : .08;
@@ -2196,7 +2214,7 @@ function click(time, accent, beat){
 function startMetro(){
   const p = practice; if (!p) return;
   try { p.ctx = actx(); } catch(e){ toast('O som não está disponível neste navegador.'); return; }
-  p.playing = true; p.n = 0; p.bar = 0; p.slot = -1; p.ptr = -1; p.lastCi = -1; p.next = p.ctx.currentTime + .08; p.queue = [];
+  p.playing = true; p.n = 0; p.bar = 0; p.slot = -1; p.ptr = -1; p.lastCi = -1; p.next = p.ctx.currentTime + .08; p.queue = []; if (along.show) alongPlay();
   try { navigator.wakeLock && navigator.wakeLock.request('screen').then(l=>p.lock=l).catch(()=>{}); } catch(e){}
   const strum = fitStrum(p.s.strum, p.meter);
   const sched = () => {
@@ -2216,8 +2234,8 @@ function startMetro(){
   p.raf = requestAnimationFrame(draw);
   renderPractice();
 }
-function stopMetro(){ const p = practice; if(!p) return; p.playing=false; clearInterval(p.timer); cancelAnimationFrame(p.raf); p.slot=-1; try{ p.lock && p.lock.release(); }catch(e){} renderPractice(); }
-function closePractice(){ if (practice){ stopMetro(); try{ 0; }catch(e){} } practice=null; const el=document.getElementById('practice'); el&&el.remove(); }
+function stopMetro(){ const p = practice; if(!p) return; p.playing=false; alongPause(); clearInterval(p.timer); cancelAnimationFrame(p.raf); p.slot=-1; try{ p.lock && p.lock.release(); }catch(e){} renderPractice(); }
+function closePractice(){ if (practice){ stopMetro(); alongClose(); } practice=null; const el=document.getElementById('practice'); el&&el.remove(); }
 
 /* ---------- guitar sound (Karplus-Strong pluck) ---------- */
 const audio = {ctx:null, cache:{}};
@@ -2979,6 +2997,66 @@ document.addEventListener('click', e => {
   const p = e.target.closest('.btn.primary, .metro-play, .play, .tr-dial, .rec-btn'); if (p) buzz(8);
 }, true);
 /* ================= FIM EXTRAS ================= */
+
+/* ================= TOCAR JUNTO: vídeo do YouTube dentro do treino ================= */
+const ytIdOf = u => { if (!u) return ''; const m = String(u).match(/(?:youtu\.be\/|v=|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : ''; };
+let ytApi = null;
+function ytLoad(){
+  if (ytApi) return ytApi;
+  ytApi = new Promise(res => {
+    if (window.YT && window.YT.Player) return res(window.YT);
+    const prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = () => { prev && prev(); res(window.YT); };
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; s.onerror = () => res(null); document.head.appendChild(s);
+    setTimeout(() => res(window.YT && window.YT.Player ? window.YT : null), 9000);
+  });
+  return ytApi;
+}
+along = { show:false, rate:1, player:null, ready:false, vid:'', playing:false };
+function alongVid(s){ return ytIdOf(s.yt) || ytIdOf(s.link); }
+function alongCard(){
+  const p = practice; if (!p) return;
+  let el = document.getElementById('along');
+  if (!along.show){ el && el.remove(); return; }
+  const vid = alongVid(p.s);
+  if (!el){ el = document.createElement('div'); el.id = 'along'; el.className = 'along'; document.body.appendChild(el); }
+  if (!vid){
+    const q = encodeURIComponent([p.s.title, p.s.artist].filter(Boolean).join(' '));
+    el.innerHTML = `<div class="al-head"><b>Tocar junto com a música</b><button class="al-x" data-al="close" aria-label="Fechar">${I.close}</button></div>
+      <p>Cole o link do vídeo no YouTube para tocar junto, com a velocidade que quiser.</p>
+      <div class="al-row"><input class="inp" id="al-url" placeholder="https://youtube.com/watch?v=..." inputmode="url"><button class="btn primary" data-al="save">Usar</button></div>
+      <a class="al-find" href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">Procurar "${esc(p.s.title||'a música')}" no YouTube</a>`;
+    return;
+  }
+  if (along.vid !== vid || !el.querySelector('#al-frame')){
+    along.vid = vid; along.ready = false; along.player = null;
+    el.innerHTML = `<div class="al-video"><div id="al-frame"></div></div>
+      <div class="al-bar"><div class="seg" role="group" aria-label="Velocidade">${[.5,.75,1].map(r => `<button data-al-rate="${r}" aria-pressed="${along.rate===r}">${r===1?'Normal':Math.round(r*100)+'%'}</button>`).join('')}</div>
+        <button class="al-x" data-al="close" aria-label="Fechar vídeo">${I.close}</button></div>`;
+    ytLoad().then(YT => {
+      if (!YT){ const f = el.querySelector('.al-video'); if (f) f.innerHTML = `<p class="al-err">O vídeo não carregou aqui. <a href="https://youtu.be/${vid}" target="_blank" rel="noopener">Abrir no YouTube</a></p>`; return; }
+      along.player = new YT.Player('al-frame', { videoId: vid, playerVars:{ playsinline:1, rel:0, modestbranding:1 },
+        events:{ onReady: () => { along.ready = true; try { along.player.setPlaybackRate(along.rate); } catch(e){} if (practice && practice.playing) alongPlay(); },
+                 onStateChange: e => { along.playing = e.data === 1; } } });
+    });
+  } else {
+    el.querySelectorAll('[data-al-rate]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.alRate === along.rate)));
+  }
+}
+function alongPlay(){ if (along.player && along.ready){ try { along.player.setPlaybackRate(along.rate); along.player.playVideo(); } catch(e){} } }
+function alongPause(){ if (along.player && along.ready){ try { along.player.pauseVideo(); } catch(e){} } }
+function alongClose(){ alongPause(); along.show = false; try { along.player && along.player.destroy(); } catch(e){} along.player = null; along.vid = ''; along.ready = false; const el = document.getElementById('along'); el && el.remove(); }
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-al],[data-al-rate]'); if (!b) return;
+  const p = practice; if (!p) return;
+  if (b.dataset.alRate){ along.rate = +b.dataset.alRate; const base = p.baseBpm || p.bpm; p.baseBpm = base; p.bpm = Math.round(base * along.rate); try { along.player && along.player.setPlaybackRate(along.rate); } catch(err){} renderPractice(); alongCard(); return; }
+  const a = b.dataset.al;
+  if (a === 'toggle'){ along.show = !along.show; if (along.show){ p.baseBpm = p.baseBpm || p.bpm; } alongCard(); renderPractice(); return; }
+  if (a === 'close'){ alongClose(); renderPractice(); return; }
+  if (a === 'save'){ const v = (document.getElementById('al-url')||{}).value || ''; const id = ytIdOf(v); if (!id){ toast('Esse link não parece ser do YouTube'); return; }
+    p.s = { ...p.s, yt: v.trim() }; saveSong(p.s); alongCard(); toast('Vídeo salvo nesta música'); return; }
+  if (a === 'click'){ p.mute = !p.mute; renderPractice(); return; }
+});
+/* ================= FIM TOCAR JUNTO ================= */
 
 /* @@END-EXTRAS@@ */
 

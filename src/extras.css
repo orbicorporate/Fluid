@@ -119,3 +119,18 @@
 @keyframes wv{50%{opacity:.4}}
 .rec-x{width:32px;height:32px;border-radius:50%;border:0;background:transparent;color:var(--faint);display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
 .rec-x svg{width:14px;height:14px}.rec-x.armed{color:#fff;background:#E11D48}
+
+/* ===== tocar junto (vídeo flutuante) ===== */
+.along{position:fixed;z-index:40;right:16px;top:calc(70px + env(safe-area-inset-top,0px));width:min(340px,calc(100vw - 32px));border-radius:22px;overflow:hidden;background:var(--sheetBg,var(--surface));border:1px solid var(--glassEdge);box-shadow:var(--glassHi),0 24px 60px -18px rgba(20,22,60,.45);-webkit-backdrop-filter:blur(30px) saturate(1.7);backdrop-filter:blur(30px) saturate(1.7);animation:alIn .4s cubic-bezier(.2,1.2,.3,1) both}
+@keyframes alIn{from{opacity:0;transform:translateY(-12px) scale(.96)}to{opacity:1;transform:none}}
+.along>p{margin:0 14px 10px;font-size:13px;color:var(--muted)}
+.al-head{display:flex;align-items:center;justify-content:space-between;padding:12px 10px 6px 14px}.al-head b{font-size:14px}
+.al-row{display:flex;gap:8px;margin:0 14px 8px}.al-row .inp{flex:1;min-width:0;height:42px;border-radius:12px;padding:0 12px;font-size:13px}
+.al-find{display:block;margin:0 14px 14px;font-size:12.5px;font-weight:600;color:var(--accentInk)}
+.al-video{position:relative;aspect-ratio:16/9;background:#000}
+.al-video iframe,#al-frame{position:absolute;inset:0;width:100%;height:100%;border:0}
+.al-err{color:#fff;font-size:13px;padding:16px;margin:0}.al-err a{color:#A5B4FC}
+.al-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 8px 8px 10px}
+.al-x{width:34px;height:34px;border-radius:50%;border:0;background:var(--glass2);color:var(--muted);display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}
+.al-x svg{width:15px;height:15px}
+@media (max-width:620px){.along{top:calc(62px + env(safe-area-inset-top,0px));right:12px;width:min(250px,64vw);border-radius:18px}.al-bar .seg button{padding:0 8px;font-size:12px}}

@@ -329,3 +329,63 @@ document.addEventListener('click', e => {
   const p = e.target.closest('.btn.primary, .metro-play, .play, .tr-dial, .rec-btn'); if (p) buzz(8);
 }, true);
 /* ================= FIM EXTRAS ================= */
+
+/* ================= TOCAR JUNTO: vídeo do YouTube dentro do treino ================= */
+const ytIdOf = u => { if (!u) return ''; const m = String(u).match(/(?:youtu\.be\/|v=|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{11})/); return m ? m[1] : ''; };
+let ytApi = null;
+function ytLoad(){
+  if (ytApi) return ytApi;
+  ytApi = new Promise(res => {
+    if (window.YT && window.YT.Player) return res(window.YT);
+    const prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = () => { prev && prev(); res(window.YT); };
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; s.onerror = () => res(null); document.head.appendChild(s);
+    setTimeout(() => res(window.YT && window.YT.Player ? window.YT : null), 9000);
+  });
+  return ytApi;
+}
+along = { show:false, rate:1, player:null, ready:false, vid:'', playing:false };
+function alongVid(s){ return ytIdOf(s.yt) || ytIdOf(s.link); }
+function alongCard(){
+  const p = practice; if (!p) return;
+  let el = document.getElementById('along');
+  if (!along.show){ el && el.remove(); return; }
+  const vid = alongVid(p.s);
+  if (!el){ el = document.createElement('div'); el.id = 'along'; el.className = 'along'; document.body.appendChild(el); }
+  if (!vid){
+    const q = encodeURIComponent([p.s.title, p.s.artist].filter(Boolean).join(' '));
+    el.innerHTML = `<div class="al-head"><b>Tocar junto com a música</b><button class="al-x" data-al="close" aria-label="Fechar">${I.close}</button></div>
+      <p>Cole o link do vídeo no YouTube para tocar junto, com a velocidade que quiser.</p>
+      <div class="al-row"><input class="inp" id="al-url" placeholder="https://youtube.com/watch?v=..." inputmode="url"><button class="btn primary" data-al="save">Usar</button></div>
+      <a class="al-find" href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">Procurar "${esc(p.s.title||'a música')}" no YouTube</a>`;
+    return;
+  }
+  if (along.vid !== vid || !el.querySelector('#al-frame')){
+    along.vid = vid; along.ready = false; along.player = null;
+    el.innerHTML = `<div class="al-video"><div id="al-frame"></div></div>
+      <div class="al-bar"><div class="seg" role="group" aria-label="Velocidade">${[.5,.75,1].map(r => `<button data-al-rate="${r}" aria-pressed="${along.rate===r}">${r===1?'Normal':Math.round(r*100)+'%'}</button>`).join('')}</div>
+        <button class="al-x" data-al="close" aria-label="Fechar vídeo">${I.close}</button></div>`;
+    ytLoad().then(YT => {
+      if (!YT){ const f = el.querySelector('.al-video'); if (f) f.innerHTML = `<p class="al-err">O vídeo não carregou aqui. <a href="https://youtu.be/${vid}" target="_blank" rel="noopener">Abrir no YouTube</a></p>`; return; }
+      along.player = new YT.Player('al-frame', { videoId: vid, playerVars:{ playsinline:1, rel:0, modestbranding:1 },
+        events:{ onReady: () => { along.ready = true; try { along.player.setPlaybackRate(along.rate); } catch(e){} if (practice && practice.playing) alongPlay(); },
+                 onStateChange: e => { along.playing = e.data === 1; } } });
+    });
+  } else {
+    el.querySelectorAll('[data-al-rate]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.alRate === along.rate)));
+  }
+}
+function alongPlay(){ if (along.player && along.ready){ try { along.player.setPlaybackRate(along.rate); along.player.playVideo(); } catch(e){} } }
+function alongPause(){ if (along.player && along.ready){ try { along.player.pauseVideo(); } catch(e){} } }
+function alongClose(){ alongPause(); along.show = false; try { along.player && along.player.destroy(); } catch(e){} along.player = null; along.vid = ''; along.ready = false; const el = document.getElementById('along'); el && el.remove(); }
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-al],[data-al-rate]'); if (!b) return;
+  const p = practice; if (!p) return;
+  if (b.dataset.alRate){ along.rate = +b.dataset.alRate; const base = p.baseBpm || p.bpm; p.baseBpm = base; p.bpm = Math.round(base * along.rate); try { along.player && along.player.setPlaybackRate(along.rate); } catch(err){} renderPractice(); alongCard(); return; }
+  const a = b.dataset.al;
+  if (a === 'toggle'){ along.show = !along.show; if (along.show){ p.baseBpm = p.baseBpm || p.bpm; } alongCard(); renderPractice(); return; }
+  if (a === 'close'){ alongClose(); renderPractice(); return; }
+  if (a === 'save'){ const v = (document.getElementById('al-url')||{}).value || ''; const id = ytIdOf(v); if (!id){ toast('Esse link não parece ser do YouTube'); return; }
+    p.s = { ...p.s, yt: v.trim() }; saveSong(p.s); alongCard(); toast('Vídeo salvo nesta música'); return; }
+  if (a === 'click'){ p.mute = !p.mute; renderPractice(); return; }
+});
+/* ================= FIM TOCAR JUNTO ================= */
