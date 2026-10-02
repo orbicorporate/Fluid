@@ -788,6 +788,18 @@ body{background-attachment:fixed}
 .metro.closed .metro-play svg{width:18px;height:18px}
 .metro-panel{display:flex;flex-direction:column;gap:12px;animation:mOpen .28s cubic-bezier(.2,.8,.2,1) both}
 @keyframes mOpen{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+/* ajuda do colar mensagem, recolhida */
+.paste-help{border-radius:14px;border:1px solid var(--glassEdgeSoft);background:var(--glass2);padding:0 12px}
+.paste-help summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:40px;font-size:13px;font-weight:600;color:var(--muted)}
+.paste-help summary::-webkit-details-marker{display:none}
+.paste-help summary::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .2s}
+.paste-help[open] summary::after{transform:rotate(-135deg) translateY(-2px)}
+.paste-help[open]{padding-bottom:12px}
+.ph-rows{display:flex;flex-direction:column;gap:8px}
+.ph-rows div{display:grid;grid-template-columns:92px 1fr;gap:10px;align-items:baseline;font-size:13px;line-height:1.4}
+.ph-rows code{font-family:var(--fMono);font-size:12px;font-weight:600;color:var(--accentInk);background:var(--glowSoft);padding:2px 7px;border-radius:7px;justify-self:start;white-space:nowrap}
+.ph-rows span{color:var(--muted)}
 </style>
 
 <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -1677,13 +1689,22 @@ function renderEditor(){
         ${ed.sp && ed.sp.results.length===1 && ed.s.link===ed.sp.results[0].link ? `<p class="hint ok" style="margin:0">Pronto: nome, artista e link preenchidos. Toque em Salvar, no topo.</p>`:''}
       </div>` : ''}
       <div class="paste">
-        <div class="row" style="justify-content:space-between"><h3>Colar mensagem do professor</h3>${!ed.showPaste?`<button type="button" class="btn ghost" data-act="toggle-paste" style="height:34px">Abrir</button>`:''}</div>
-        <p class="hint" style="margin:0">Cole aqui o que ele mandou, do jeito que chegou. O Fluid separa sozinho e preenche os campos abaixo:</p>
-        <div class="paste-legend"><span><b class="mono">21-42-32</b>acorde (notas juntas)</span><span><b class="mono">41 - 42 - 44</b>dedilhado (uma de cada vez)</span><span><b class="mono">----</b>pausa</span><span><b>Frase 1</b>nome da parte</span><span><b>Capo 2 · 90 bpm</b>capotraste e andamento</span><span><b>↓ ↓↑ ↑↓↑</b>batida</span></div>
-        <p class="hint" style="margin:0">O que não for música vai para Notas e observações.</p>
-        ${ed.showPaste ? `<textarea class="inp" id="ed-paste" rows="6" placeholder="https://open.spotify.com/track/...&#10;Capotraste 2&#10;&#10;42-52&#10;21-42-32&#10;Intro: 60·60·45↑·42">${esc(ed.pasteText||'')}</textarea>
+        <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div style="min-width:0"><h3>Colar mensagem do professor</h3><p class="hint" style="margin:2px 0 0">Cole o que ele mandou no WhatsApp e o Fluid preenche a música.</p></div>${ed.showPaste ? `<button type="button" class="btn ghost" data-act="toggle-paste" style="height:34px;flex-shrink:0">Fechar</button>` : `<button type="button" class="btn" data-act="toggle-paste" style="height:38px;flex-shrink:0">${I.paste}Colar</button>`}</div>
+        ${ed.showPaste ? `<textarea class="inp" id="ed-paste" rows="5" placeholder="Cole aqui a mensagem inteira, do jeito que chegou">${esc(ed.pasteText||'')}</textarea>
         <div class="row"><button type="button" class="btn primary" data-act="do-paste">Preencher tudo</button>${sampleFn?`<button type="button" class="btn" data-act="ai-paste" ${ed.aiBusy?'disabled':''}>${I.spark}${ed.aiBusy?'Interpretando…':'Interpretar com IA'}</button>`:''}</div>
-        <p class="hint${ed.pasteMsg&&/^(Entendi|A IA entendeu)/.test(ed.pasteMsg)?' ok':''}" id="paste-msg" style="margin:0">${esc(ed.pasteMsg || 'Acordes (21-42-32), dedilhados (60·45↑·42), batida (↓ ↓↑ ↑↓↑), capo, bpm e link.')}</p>` : `<p class="hint" style="margin:0">Cole o link e os números do jeito que ele manda no WhatsApp.</p>`}
+        ${ed.pasteMsg ? `<p class="hint${/^(Entendi|A IA entendeu)/.test(ed.pasteMsg)?' ok':''}" id="paste-msg" style="margin:0">${esc(ed.pasteMsg)}</p>` : `<p class="hint" id="paste-msg" style="margin:0"></p>`}
+        <details class="paste-help"><summary>Como o Fluid entende a mensagem?</summary>
+          <div class="ph-rows">
+            <div><code>21-42-32</code><span>Um acorde. Cada número é corda e casa: 21 = corda 2, casa 1. Separados por traço, tocam juntos.</span></div>
+            <div><code>60·45·42</code><span>Notas uma de cada vez (dedilhado ou riff). Uma seta ↑ depois da nota marca puxada.</span></div>
+            <div><code>----</code><span>Pausa.</span></div>
+            <div><code>Frase 1:</code><span>Nome da parte da música.</span></div>
+            <div><code>Capo 2</code><span>Capotraste. "90 bpm" vira o andamento.</span></div>
+            <div><code>↓ ↓↑ ↑↓↑</code><span>A batida.</span></div>
+            <div><code>link</code><span>Link do Spotify ou YouTube vira o link da música.</span></div>
+          </div>
+          <p class="hint" style="margin:6px 0 0">O resto do texto vai para Notas e observações.</p>
+        </details>` : ''}
       </div>
 
       <div class="field notes-field"><label for="ed-notes">Notas e observações</label><textarea class="inp" id="ed-notes" rows="4" placeholder="Ex.: dedilhado só com o polegar nas cordas graves, repetir a Frase 1 duas vezes, segurar o capo firme">${esc(s.notes)}</textarea><span class="hint">Aparece na página da música, logo abaixo da sequência.</span></div>
