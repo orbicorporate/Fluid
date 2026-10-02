@@ -31,7 +31,7 @@
 
   /* ---------- estado ---------- */
   const st = { open:false, tab:'pastas', view:null, students:[], payments:[], settings:{ remind_days:3 }, loaded:false, loadErr:'',
-    month: ymOf(today()), finTab:'geral', range:{ preset:'month' }, hq:'', filter:'active', q:'', members:{}, owners:{}, flash:'', busy:false, payOpen:null };
+    month: ymOf(today()), finTab:'geral', att:{}, plans:[], tmeta:{}, evo:{}, extrasLoaded:false, lib:null, lq:'', week:null, moving:null, range:{ preset:'month' }, hq:'', filter:'active', q:'', members:{}, owners:{}, flash:'', busy:false, payOpen:null };
 
   /* ---------- status das cobranças ---------- */
   function payStatus(p){
@@ -126,7 +126,7 @@
   async function open(tab){
     mount(); st.open = true; if (tab) st.tab = tab; st.view = null; root.hidden = false; document.documentElement.classList.add('hb-lock');
     draw();
-    try { await Promise.all([W().loadNotebooks().then(loadFolders), st.loaded ? null : loadTeacher()]); } catch(e){ st.loadErr = W().errText(e); }
+    try { await Promise.all([W().loadNotebooks().then(loadFolders), st.loaded ? null : loadTeacher(), st.extrasLoaded ? null : loadExtras()]); } catch(e){ st.loadErr = W().errText(e); }
     draw();
   }
   function close(){ st.open = false; root.hidden = true; root.querySelector('.hb-sheet').innerHTML = ''; document.documentElement.classList.remove('hb-lock'); }
@@ -137,7 +137,7 @@
     if (!root || !st.open) return;
     const sheet = root.querySelector('.hb-sheet'); const keep = sheet.querySelector('.hb-body'); const y = keep ? keep.scrollTop : 0;
     const c = counts();
-    const tabs = [['pastas','Pastas'],['alunos','Alunos'],['financeiro','Financeiro'],['conta','Conta']];
+    const tabs = [['pastas','Pastas'],['alunos','Alunos'],['agenda','Agenda'],['financeiro','Financeiro'],['biblioteca','Biblioteca'],['conta','Conta']];
     sheet.innerHTML = `
       <header class="hb-head">
         ${st.view ? `<button class="hb-icon" data-h="back" aria-label="Voltar">${IC.back}</button>` : `<div class="hb-me"><i style="--c:${colorFor(W().me().id)}">${esc(initials(W().me().name))}</i><span><b>${esc(W().me().name)}</b><small>${esc(W().current().name)}</small></span></div>`}
@@ -154,6 +154,8 @@
     if (st.tab==='pastas') return viewFolders();
     if (st.tab==='alunos') return guard() || viewStudents();
     if (st.tab==='financeiro') return guard() || viewFinance();
+    if (st.tab==='agenda') return guard() || viewAgenda();
+    if (st.tab==='biblioteca') return viewLibrary();
     return viewAccount();
   }
   function guard(){
@@ -173,6 +175,7 @@
     left: sv('<path d="M15 18l-6-6 6-6"/>'), right: sv('<path d="M9 18l6-6-6-6"/>'), gear: sv('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>'),
     cal: sv('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>'), alert: sv('<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>'),
     receipt: sv('<path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6"/>'), down: sv('<path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 20h14"/>'), bell: sv('<path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 21a2 2 0 0 0 4 0"/>'), grid: sv('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'),
+    spark: sv('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>'), book: sv('<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z"/><path d="M4 19V5M9 7h6"/>'), music: sv('<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>'),
     trash: sv('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'), pause: sv('<path d="M9 5v14M15 5v14"/>'), play: sv('<path d="M7 5l12 7-12 7Z"/>'), share: sv('<path d="M12 3v13M7 8l5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>'),
   };
   const pill = (k, label) => `<span class="hb-pill ${STATUS[k]?.[1]||k}">${esc(label || STATUS[k][0])}</span>`;
@@ -290,6 +293,7 @@
         <button class="btn" data-h="stu-edit" data-id="${s.id}">${IC.edit}Editar</button>
         <button class="btn" data-h="stu-pause" data-id="${s.id}">${s.status==='paused' ? IC.play+'Reativar' : IC.pause+'Pausar'}</button>
       </div>
+      ${evoBox(s)}
       <div class="hb-cards2">
         <div class="hb-info" style="--c:#8B5CF6"><small>Mensalidade</small><b>${Number(s.fee) ? brl(s.fee) : 'Sem cobrança'}</b><span>${Number(s.fee) ? 'vence todo dia ' + s.due_day : 'Defina um valor para gerar cobranças'}</span></div>
         <div class="hb-info" style="--c:#22C55E"><small>Recebido em ${today().slice(0,4)}</small><b>${brl(paidYear)}</b><span>aluno desde ${fullDate(s.start_date)}</span></div>
@@ -358,7 +362,7 @@
     const desc = p.description || (/^\d{4}-\d{2}$/.test(p.period) ? 'mensalidade de ' + MONTHS[+p.period.slice(5)-1] : 'cobrança');
     return tpl.replace(/\{nome\}/g, s.name.split(' ')[0]).replace(/\{valor\}/g, brl(p.amount)).replace(/\{descricao\}/g, desc)
       .replace(/\{vencimento\}/g, (late ? 'que venceu em ' : 'com vencimento em ') + fullDate(p.due_date))
-      .replace(/\{pix\}/g, st.settings.pix_key ? ' Chave Pix: ' + st.settings.pix_key + '.' : '');
+      .replace(/\{pix\}/g, st.settings.pix_key ? ' Chave Pix: ' + st.settings.pix_key + '.' : '') + (st.settings.pix_key && !late ? '' : '') + (st.settings.pix_key ? '\n\nPix copia e cola:\n' + pixPayload(p.amount, (s.name.split(' ')[0] + p.period).slice(0,25)) : '');
   }
   function monthRows(ym){
     const rows = st.payments.filter(p => ymOf(p.due_date) === ym);
@@ -531,13 +535,16 @@
     // linha
     c.fillStyle = 'rgba(20,22,60,.08)'; c.fillRect(150, 810, W-300, 2);
     // detalhes
-    const rows = receipt
+    const willQR = !receipt && !!st.settings.pix_key && !!(await loadQR());
+    const rows = willQR ? [['Vencimento', fullDate(p.due_date) + (k==='late' ? '  ·  em atraso' : '')]] : receipt
       ? [['Pago em', fullDate(p.paid_at)], ['Forma', (METHODS.find(m=>m[0]===p.method)||[,'—'])[1]], ['Vencimento', fullDate(p.due_date)]]
       : [['Vencimento', fullDate(p.due_date) + (k==='late' ? '  ·  em atraso' : '')], st.settings.pix_key ? ['Chave Pix', st.settings.pix_key] : null, ['Aulas', scheduleText(s)]].filter(Boolean);
     rows.forEach(([a,b], i) => { const y = 890 + i*92; c.fillStyle = '#7A7F95'; c.font = `500 30px ${FB}`; c.fillText(a, 150, y); c.fillStyle = (a==='Vencimento' && k==='late' && !receipt) ? '#E11D48' : '#12131C'; c.font = fitText(c, b, W-560, 36, 600, FB); c.textAlign = 'right'; c.fillText(b, W-150, y); c.textAlign = 'left'; });
+    // QR do Pix
+    let hasQR = false; if (!receipt && st.settings.pix_key){ hasQR = await drawQR(c, pixPayload(p.amount, (s.name.split(' ')[0] + p.period).slice(0,25)), 150, 950, 210); if (hasQR){ c.fillStyle = '#12131C'; c.font = `600 32px ${FB}`; c.fillText('Pague com Pix', 390, 1010); c.fillStyle = '#7A7F95'; c.font = `400 26px ${FB}`; c.fillText('Aponte a câmera do app do banco', 390, 1052); c.fillText('ou use o Pix copia e cola', 390, 1086); c.fillStyle = '#12131C'; c.font = fitText(c, 'Chave: ' + st.settings.pix_key, W-540, 26, 600, FB); c.fillText('Chave: ' + st.settings.pix_key, 390, 1128); } }
     // rodapé
-    c.fillStyle = '#7A7F95'; c.font = `500 28px ${FB}`; c.fillText('Prof. ' + (W_ && W_.me ? W_.me().name : ''), 150, H-170);
-    c.fillStyle = '#A0A4B8'; c.font = `400 26px ${FB}`; c.fillText(receipt ? 'Obrigado pela pontualidade!' : 'Aulas de violão · enviado pelo Fluid', 150, H-128);
+    c.fillStyle = '#7A7F95'; c.font = `500 28px ${FB}`; c.fillText('Prof. ' + (W_ && W_.me ? W_.me().name : ''), 150, H-148);
+    c.fillStyle = '#A0A4B8'; c.font = `400 26px ${FB}`; c.fillText(receipt ? 'Obrigado pela pontualidade!' : 'Aulas de violão · enviado pelo Fluid', 150, H-112);
     return new Promise(res => cv.toBlob(b => res({ blob: b, url: URL.createObjectURL(b) }), 'image/png'));
   }
   function receiptText(p, s){
@@ -586,6 +593,9 @@
     const s = st.settings;
     return `<form class="hb-form" data-form="settings"><h2>Ajustes de cobrança</h2>
       <label class="hb-field"><span>Chave Pix</span><input class="inp" name="pix_key" value="${esc(s.pix_key||'')}" placeholder="CPF, e-mail, telefone ou chave aleatória"><small>Vai junto na mensagem de cobrança.</small></label>
+      <div class="hb-two"><label class="hb-field"><span>Nome no Pix</span><input class="inp" name="pix_name" value="${esc(st.tmeta.name||W().me().name||'')}" maxlength="25"></label>
+        <label class="hb-field"><span>Cidade</span><input class="inp" name="pix_city" value="${esc(st.tmeta.city||'')}" maxlength="15" placeholder="Sorocaba"></label></div>
+      <small class="hb-hint" style="margin-top:-6px">Com a chave, o nome e a cidade, o Fluid gera o QR Code e o Pix copia e cola em cada cobrança.</small>
       <label class="hb-field"><span>Avisar quantos dias antes do vencimento</span><select class="inp" name="remind_days">${[0,1,2,3,5,7].map(n => `<option value="${n}" ${Number(s.remind_days??3)===n?'selected':''}>${n===0?'Só no dia':n+' '+(n===1?'dia':'dias')}</option>`).join('')}</select></label>
       <label class="hb-field"><span>Mensagem de cobrança</span><textarea class="inp" name="charge_msg" rows="4" placeholder="Oi {nome}! Passando para lembrar da {descricao}, no valor de {valor}, {vencimento}.{pix}">${esc(s.charge_msg||'')}</textarea>
         <small>Use {nome}, {valor}, {descricao}, {vencimento} e {pix}. Deixe em branco para usar a mensagem padrão.</small></label>
@@ -608,7 +618,7 @@
       <button class="btn ghost danger" data-h="signout">Sair da conta</button>`;
   }
 
-  const VIEWS = { card: viewCard, payedit: viewPayEdit, nbform: viewFolderForm, invite: viewInvite, student: viewStudent, sform: viewStudentForm, extra: viewExtra, settings: viewSettings };
+  const VIEWS = { send: viewSend, plan: viewPlan, apply: viewApply, card: viewCard, payedit: viewPayEdit, nbform: viewFolderForm, invite: viewInvite, student: viewStudent, sform: viewStudentForm, extra: viewExtra, settings: viewSettings };
 
   /* ---------- ações ---------- */
   const go = (view) => { view.back = st.view; st.view = view; st.resetScroll = true; draw(); const b = root.querySelector('.hb-body'); if (b) b.scrollTop = 0; };
@@ -621,6 +631,7 @@
     if (t.dataset.tab){ st.tab = t.dataset.tab; st.view = null; st.resetScroll = true; draw(); return; }
     const h = t.dataset.h, id = t.dataset.id, v = t.dataset.v, sb = W().sb;
     if (t.tagName === 'BUTTON' && t.type !== 'submit') e.preventDefault();
+    if (await teachClick(h, t, id, v)) return;
     switch (h){
       case 'close': return close();
       case 'back': return back();
@@ -695,6 +706,7 @@
     if (t.dataset.in === 'ctext'){ if (st.view) st.view.text = t.value; return; }
     if (t.dataset.in === 'rfrom' || t.dataset.in === 'rto'){ if (e.type !== 'change') return; st.range[t.dataset.in==='rfrom'?'from':'to'] = t.value; return draw(); }
     if (t.dataset.in === 'hq'){ st.hq = t.value; const pos = t.selectionStart; draw(); const n = root.querySelector('[data-in="hq"]'); if (n){ n.focus(); try { n.setSelectionRange(pos,pos); } catch(err){} } return; }
+    if (t.dataset.in === 'lq'){ st.lq = t.value; const pos = t.selectionStart; draw(); const n = root.querySelector('[data-in="lq"]'); if (n){ n.focus(); try { n.setSelectionRange(pos,pos); } catch(err){} } return; }
     if (t.dataset.in === 'q'){ st.q = t.value; const pos = t.selectionStart; draw(); const n = root.querySelector('[data-in="q"]'); if (n){ n.focus(); try { n.setSelectionRange(pos,pos); } catch(err){} } return; }
     if (st.view && st.view.draft && t.name && t.form && t.form.dataset.form==='stu' && t.type !== 'hidden') st.view.draft[t.name] = t.value;
   }
@@ -739,12 +751,191 @@
     });
     if (kind==='settings') return run(async () => {
       const row = { user_id: W().me().id, pix_key: fd.pix_key.trim() || null, charge_msg: fd.charge_msg.trim() || null, remind_days: Number(fd.remind_days) };
-      must(await sb.from('teacher_settings').upsert(row)); st.settings = row; updateBadge(); back(); say('Ajustes salvos');
+      must(await sb.from('teacher_settings').upsert(row)); st.settings = row;
+      st.tmeta = { name: (fd.pix_name||'').trim(), city: (fd.pix_city||'').trim() }; try { await tSet('tmeta', 'pix', st.tmeta); } catch(e){}
+      updateBadge(); back(); say('Ajustes salvos');
+    });
+    if (kind==='plan') return run(async () => {
+      const p = st.view.plan; const row = { name: fd.name.trim(), songs: p.songs||[], homework: fd.homework.split('\n').map(x=>x.trim()).filter(Boolean), summary: fd.summary.trim() };
+      const id = p.id || rid('p'); await tSet('plans', id, row); const i = st.plans.findIndex(x => x.id===id); const full = { id, ...row }; if (i<0) st.plans.push(full); else st.plans[i] = full; back(); say('Plano salvo');
+    });
+    if (kind==='move') return run(async () => {
+      const key = f.dataset.id, [sid, date] = key.split('_'); const row = { student_id: sid, date, status:'moved', moved_to: fd.d, moved_time: fd.t || '' };
+      await tSet('attendance', key, row); st.att[key] = { id:key, ...row }; st.moving = null; draw(); say('Aula remarcada para ' + shortDate(fd.d));
     });
     if (kind==='profile') return run(async () => {
       const name = fd.name.trim(); if (!name) return; must(await sb.from('profiles').update({ name }).eq('id', W().me().id)); W().me().name = name; say('Nome salvo');
     });
   }
+
+  /* ================= PROFESSOR+: dados privados na pasta pessoal ================= */
+  const myNb = () => firstOwned() && firstOwned().id;
+  async function tList(col){ const nb = myNb(); if (!nb) return []; const { data } = await W().sb.from('items').select('id,data').eq('notebook_id', nb).eq('collection', col); return (data||[]).map(r => ({ id:r.id, ...r.data })); }
+  async function tSet(col, id, data){ const { id:_x, ...body } = data; must(await W().sb.from('items').upsert({ notebook_id: myNb(), collection: col, id, data: body, updated_at: new Date().toISOString() })); }
+  async function tDel(col, id){ must(await W().sb.from('items').delete().eq('notebook_id', myNb()).eq('collection', col).eq('id', id)); }
+  const rid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  async function loadExtras(){
+    try { const [att, plans, tm] = await Promise.all([tList('attendance'), tList('plans'), tList('tmeta')]);
+      st.att = {}; att.forEach(a => st.att[a.id] = a); st.plans = plans.sort((a,b)=>String(a.name).localeCompare(b.name)); st.tmeta = tm.find(x => x.id==='pix') || {}; st.extrasLoaded = true; } catch(e){ st.extrasLoaded = true; }
+  }
+  async function songsOf(nbId){ const { data } = await W().sb.from('items').select('id,data').eq('notebook_id', nbId).eq('collection', 'songs'); return (data||[]).map(r => ({ id:r.id, ...r.data })); }
+  async function sendSongsTo(list, nbIds){
+    const rows = []; nbIds.forEach(nb => list.forEach(s => { const { id, ...body } = s; rows.push({ notebook_id: nb, collection:'songs', id: rid('s'), data: { ...body, createdAt: new Date().toISOString(), tags: body.tags || [] }, updated_at: new Date().toISOString() }); }));
+    if (rows.length) must(await W().sb.from('items').insert(rows));
+    return rows.length;
+  }
+
+  /* ---------- Pix: BR Code (copia e cola) + QR ---------- */
+  function crc16(s){ let c = 0xFFFF; for (let i=0;i<s.length;i++){ c ^= s.charCodeAt(i) << 8; for (let j=0;j<8;j++) c = (c & 0x8000) ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF; } return c.toString(16).toUpperCase().padStart(4,'0'); }
+  const tlv = (id, v) => id + String(v.length).padStart(2,'0') + v;
+  const plain = (t, n) => String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9 ]/g,'').toUpperCase().slice(0, n).trim();
+  function pixPayload(amount, txid){
+    const key = (st.settings.pix_key||'').trim(); if (!key) return '';
+    const name = plain(st.tmeta.name || W().me().name, 25) || 'PROFESSOR', city = plain(st.tmeta.city || 'SAO PAULO', 15) || 'SAO PAULO';
+    let p = tlv('00','01') + tlv('26', tlv('00','br.gov.bcb.pix') + tlv('01', key)) + tlv('52','0000') + tlv('53','986');
+    if (Number(amount) > 0) p += tlv('54', Number(amount).toFixed(2));
+    p += tlv('58','BR') + tlv('59', name) + tlv('60', city) + tlv('62', tlv('05', (plain(txid, 25).replace(/ /g,'') || '***')));
+    p += '6304'; return p + crc16(p);
+  }
+  let qrLib = null;
+  function loadQR(){ if (qrLib) return qrLib; qrLib = new Promise(res => { if (window.qrcode) return res(window.qrcode); const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js'; s.onload = () => res(window.qrcode || null); s.onerror = () => res(null); document.head.appendChild(s); }); return qrLib; }
+  async function drawQR(c, text, x, y, size){
+    const lib = await loadQR(); if (!lib) return false;
+    const q = lib(0, 'M'); q.addData(text); q.make(); const n = q.getModuleCount(), cell = size / (n + 4);
+    rr(c, x, y, size, size, 22); c.fillStyle = '#fff'; c.fill();
+    c.fillStyle = '#12131C'; for (let r=0;r<n;r++) for (let k=0;k<n;k++) if (q.isDark(r,k)) c.fillRect(x + (k+2)*cell, y + (r+2)*cell, Math.ceil(cell), Math.ceil(cell));
+    return true;
+  }
+
+  /* ---------- evolução do aluno (lê a pasta dele) ---------- */
+  async function loadEvo(s){
+    if (!s.notebook_id) return;
+    const { data } = await W().sb.from('items').select('collection,id,data').eq('notebook_id', s.notebook_id);
+    const rows = data || []; const get = (c, id) => (rows.find(r => r.collection===c && r.id===id) || {}).data;
+    const songs = rows.filter(r => r.collection==='songs'), lessons = rows.filter(r => r.collection==='lessons').map(r => r.data).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+    const pr = get('meta','progress') || {}, pc = get('meta','practice') || {}, ch = get('meta','changes') || {};
+    const days = pc.days || {}, last7 = Array.from({length:7}, (_,i) => { const d = new Date(); d.setDate(d.getDate()-6+i); const k = isoOf(d); return { k, m: Math.floor((days[k]||0)/60) }; });
+    let streak = 0; { const d = new Date(); if (!(days[isoOf(d)] >= 60)) d.setDate(d.getDate()-1); while (days[isoOf(d)] >= 60){ streak++; d.setDate(d.getDate()-1); } }
+    const hw = lessons.flatMap(l => (l.homework||[])); const best = Math.max(0, ...Object.values(ch.pairs||{}).map(p => p.best||0));
+    st.evo[s.id] = { songs: songs.length, mastered: (pr.mastered||[]).length, masteredList: (pr.mastered||[]).slice(-8), last7, week: last7.reduce((a,x)=>a+x.m,0), streak, lastLesson: lessons[0] && lessons[0].date, hwOpen: hw.filter(h=>!h.done).length, hwDone: hw.filter(h=>h.done).length, best, ach: Object.keys(pc.ach||{}).length };
+  }
+  function evoBox(s){
+    if (!s.notebook_id) return '';
+    const e = st.evo[s.id];
+    if (!e){ loadEvo(s).then(draw).catch(()=>{}); return `<section class="hb-box"><h3>${IC.spark}Evolução</h3><p class="hint">Carregando a pasta de ${esc(s.name.split(' ')[0])}…</p></section>`; }
+    const mx = Math.max(15, ...e.last7.map(x => x.m));
+    return `<section class="hb-box evo"><div class="hb-sec-h"><h3>${IC.spark}Evolução</h3><small class="hb-muted">pela pasta do aluno</small></div>
+      <div class="evo-grid">
+        <div style="--c:#F97316"><b>${e.streak}</b><small>${e.streak===1?'dia seguido':'dias seguidos'}</small></div>
+        <div style="--c:#6366F1"><b>${e.week}<i>min</i></b><small>treino na semana</small></div>
+        <div style="--c:#8B5CF6"><b>${e.mastered}</b><small>acordes que já sabe</small></div>
+        <div style="--c:#14B8A6"><b>${e.songs}</b><small>músicas na pasta</small></div>
+      </div>
+      <div class="evo-week">${e.last7.map(x => `<span title="${x.m} min"><i style="height:${Math.max(6, Math.round(x.m/mx*100))}%"></i><small>${'DSTQQSS'[parse(x.k).getDay()]}</small></span>`).join('')}</div>
+      <p class="hb-hint">${[e.lastLesson ? 'Última aula registrada em ' + fullDate(e.lastLesson) : 'Nenhuma aula registrada ainda', e.hwOpen ? e.hwOpen + (e.hwOpen===1?' lição pendente':' lições pendentes') : e.hwDone ? 'Lições em dia' : '', e.best ? 'recorde de ' + e.best + ' trocas por minuto' : ''].filter(Boolean).join(' · ')}</p>
+      ${e.masteredList.length ? `<div class="evo-chips">${e.masteredList.map(n => `<span>${esc(n)}</span>`).join('')}</div>` : ''}
+    </section>`;
+  }
+
+  /* ---------- agenda ---------- */
+  function weekStart(iso){ const d = parse(iso); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return isoOf(d); }
+  const addDays = (iso, k) => { const d = parse(iso); d.setDate(d.getDate()+k); return isoOf(d); };
+  function slotsOn(iso){
+    const dow = parse(iso).getDay(), out = [];
+    st.students.filter(s => s.status==='active' && (s.lesson_days||[]).includes(dow) && (!s.start_date || s.start_date <= iso)).forEach(s => {
+      const a = st.att[s.id+'_'+iso]; out.push({ s, iso, time: s.lesson_time || '', a, key: s.id+'_'+iso });
+    });
+    Object.values(st.att).filter(a => a.moved_to === iso).forEach(a => { const s = studentById(a.student_id); if (s) out.push({ s, iso, time: a.moved_time || s.lesson_time || '', a: st.att[a.id+'_r'] || null, key: a.id+'_r', repo: a }); });
+    return out.sort((x,y) => String(x.time).localeCompare(String(y.time)));
+  }
+  function viewAgenda(){
+    if (!st.extrasLoaded){ loadExtras().then(draw); return `<div class="hb-empty"><p>Carregando…</p></div>`; }
+    if (!st.students.length) return `<div class="hb-empty big"><h3>Sua agenda vem dos alunos</h3><p>Cadastre os alunos com os dias e o horário da aula. A semana aparece aqui, com presença, falta e reposição.</p><button class="btn primary" data-h="stu-new">${IC.plus}Cadastrar aluno</button></div>`;
+    const ws = st.week || weekStart(today()), t = today(), days = Array.from({length:7}, (_,i) => addDays(ws, i));
+    const all = days.flatMap(slotsOn), done = all.filter(x => x.a && x.a.status==='ok').length, miss = all.filter(x => x.a && x.a.status==='falta').length;
+    const tomorrow = addDays(t, 1), tm = slotsOn(tomorrow).filter(x => !(x.a && x.a.status==='moved') && x.s.phone);
+    const lab = iso => { const d = parse(iso); return ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()] + ' ' + d.getDate(); };
+    return `<div class="hb-month"><button class="hb-icon" data-h="wk" data-v="-7" aria-label="Semana anterior">${IC.left}</button><b style="text-transform:none">${shortDate(days[0])} a ${shortDate(days[6])}</b><button class="hb-icon" data-h="wk" data-v="7" aria-label="Próxima semana">${IC.right}</button></div>
+      <div class="hb-mini"><span class="info"><small>Aulas na semana</small><b>${all.filter(x => !(x.a && x.a.status==='moved')).length}</b></span><span class="ok"><small>Presenças</small><b>${done}</b></span><span class="bad"><small>Faltas</small><b>${miss}</b></span></div>
+      ${tm.length ? `<button class="hb-note info" data-h="remind-all">${IC.wa}<span><b>Lembrar ${tm.length} ${tm.length===1?'aluno':'alunos'} da aula de amanhã</b><small>${tm.map(x => esc(x.s.name.split(' ')[0])).join(', ')}</small></span></button>` : ''}
+      <div class="ag-days">${days.map(d => { const sl = slotsOn(d); return `<section class="ag-day${d===t?' today':''}${d<t?' past':''}"><h4><span>${lab(d)}</span>${d===t?'<em>hoje</em>':''}</h4>
+        ${sl.length ? sl.map(x => { const k = x.a ? x.a.status : ''; const c = colorFor(x.s.id, x.s.color); return `<div class="ag-slot ${k}" style="--c:${c}">
+          <button class="ag-main" data-h="stu" data-id="${x.s.id}">${avatar(x.s.name, c, 'sm')}<span class="hb-rmain"><b>${esc(x.time ? x.time.slice(0,5) : '—')} · ${esc(x.s.name)}</b><small>${x.repo ? 'Reposição da aula de ' + shortDate(x.repo.date) : k==='ok' ? 'Presente' : k==='falta' ? 'Faltou' : k==='moved' ? 'Remarcada para ' + shortDate(x.a.moved_to) + (x.a.moved_time ? ' às ' + x.a.moved_time : '') : d < t ? 'Marque presença' : 'Agendada'}</small></span></button>
+          ${k==='moved' ? `<button class="btn ghost sm" data-h="att" data-id="${x.key}" data-v="">Desfazer</button>` : `<div class="ag-act">
+            <button class="ag-b ok${k==='ok'?' on':''}" data-h="att" data-id="${x.key}" data-v="ok" aria-label="Presente">${IC.check}</button>
+            <button class="ag-b bad${k==='falta'?' on':''}" data-h="att" data-id="${x.key}" data-v="falta" aria-label="Faltou">${IC.close}</button>
+            ${x.repo ? '' : `<button class="ag-b" data-h="move" data-id="${x.key}" aria-label="Remarcar">${IC.cal}</button>`}</div>`}
+          ${st.moving === x.key ? `<form class="ag-move" data-form="move" data-id="${x.key}"><input class="inp" type="date" name="d" required value="${addDays(d, 1)}"><input class="inp" type="time" name="t" value="${esc(x.time||'')}"><button class="btn sm primary" type="submit">Remarcar</button></form>` : ''}
+        </div>`; }).join('') : `<p class="ag-free">Livre</p>`}</section>`; }).join('')}</div>`;
+  }
+  function lessonReminder(s, iso, time){ const d = parse(iso); const dn = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'][d.getDay()];
+    return `Oi ${s.name.split(' ')[0]}! Lembrete da nossa aula de violão ${iso===addDays(today(),1)?'amanhã':'na '+dn} (${dn}, ${d.getDate()}/${d.getMonth()+1})${time?' às '+time.slice(0,5).replace(':00','h').replace(':','h'):''}. Até lá!`; }
+
+  /* ---------- biblioteca e planos de aula ---------- */
+  function viewLibrary(){
+    if (!st.lib){ st.lib = { loading:true }; (async () => { const own = W().notebooks().filter(n => n.role==='owner'); const out = []; for (const n of own){ (await songsOf(n.id)).forEach(s => out.push({ ...s, _nb:n })); } const seen = new Set(); st.lib = { songs: out.filter(s => { const k = (s.title||'').toLowerCase().trim()+'|'+(s.artist||'').toLowerCase().trim(); if (!s.title || seen.has(k)) return false; seen.add(k); return true; }).sort((a,b)=>String(a.title).localeCompare(String(b.title))) }; if (!st.extrasLoaded) await loadExtras(); draw(); })().catch(() => { st.lib = { songs:[] }; draw(); }); }
+    if (st.lib.loading) return `<div class="hb-empty"><p>Juntando as músicas das suas pastas…</p></div>`;
+    const q = (st.lq||'').toLowerCase(), list = st.lib.songs.filter(s => !q || ((s.title||'')+' '+(s.artist||'')).toLowerCase().includes(q));
+    return `<section class="hb-intro"><h2>Biblioteca</h2><p>Todas as músicas das suas pastas num lugar só. Mande para um ou vários alunos com um toque, ou monte planos de aula prontos.</p></section>
+      <div class="hb-sec-h"><h3>${IC.book}Planos de aula</h3><button class="btn sm primary" data-h="plan-new">${IC.plus}Novo plano</button></div>
+      ${(st.plans||[]).length ? `<div class="hb-list tight">${st.plans.map(p => `<div class="hb-row static plan"><span class="plan-ic" aria-hidden="true">${IC.book}</span><span class="hb-rmain"><b>${esc(p.name)}</b><small>${(p.songs||[]).length} ${(p.songs||[]).length===1?'música':'músicas'} · ${(p.homework||[]).length} ${(p.homework||[]).length===1?'lição':'lições'}</small></span><button class="btn sm" data-h="plan-apply" data-id="${p.id}">Aplicar</button><button class="hb-icon sm" data-h="plan-edit" data-id="${p.id}" aria-label="Editar plano">${IC.edit}</button></div>`).join('')}</div>`
+        : `<p class="hb-hint">Ex.: "Iniciante, mês 1" com Em, Am e a batida ↓ ↓↑, mais as lições da semana. Depois aplique em cada aluno novo.</p>`}
+      <div class="hb-sec-h"><h3>${IC.music}Músicas</h3><small class="hb-muted">${st.lib.songs.length}</small></div>
+      <input class="inp hb-search" type="search" placeholder="Buscar música" value="${esc(st.lq||'')}" data-in="lq" aria-label="Buscar música">
+      ${list.length ? `<div class="hb-list tight">${list.map(s => `<div class="hb-row static"><span class="lib-dot" style="--c:${colorFor(s.id)}">${esc(initials(s.title))}</span><span class="hb-rmain"><b>${esc(s.title)}</b><small>${esc(s.artist||'')}${(s.chords||[]).length ? ' · ' + (s.chords||[]).length + ((s.chords||[]).length===1?' acorde':' acordes') : ''} · ${esc(s._nb.name)}</small></span><button class="btn sm" data-h="send" data-id="${s.id}" data-nb="${s._nb.id}">Enviar</button></div>`).join('')}</div>`
+        : `<p class="hb-hint">Nenhuma música ainda. Cadastre músicas em qualquer pasta sua e elas aparecem aqui.</p>`}`;
+  }
+  function targetsHTML(sel){
+    const nbs = W().notebooks().filter(n => n.id !== (st.view && st.view.from));
+    return `<div class="tg-list">${nbs.map(n => { const stu = st.students.find(s => s.notebook_id===n.id); const on = sel.includes(n.id); return `<button type="button" class="tg${on?' on':''}" data-h="tg" data-id="${n.id}" style="--c:${colorFor(n.id,n.color)}" aria-pressed="${on}"><span class="tg-c">${on?IC.check:''}</span><span class="hb-rmain"><b>${esc(n.name)}</b><small>${stu ? 'Aluno: ' + esc(stu.name) : n.role==='owner' ? 'Sua pasta' : n.role==='teacher' ? 'Você é professor' : 'Compartilhada'}</small></span></button>`; }).join('')}</div>`;
+  }
+  function viewSend(v){
+    const s = v.song; return `<div class="hb-form"><h2>Enviar "${esc(s.title||'música')}"</h2><p class="hb-hint">Escolha as pastas. A música vai com acordes, batida, letra e notas.</p>
+      ${targetsHTML(v.sel)}<div class="hb-form-act"><button class="btn primary" data-h="send-go" ${v.sel.length?'':'disabled'}>Enviar para ${v.sel.length||''} ${v.sel.length===1?'pasta':'pastas'}</button><button class="btn ghost" data-h="back">Cancelar</button></div></div>`;
+  }
+  function viewPlan(v){
+    const p = v.plan; const lib = (st.lib && st.lib.songs) || [];
+    return `<form class="hb-form" data-form="plan"><h2>${p.id ? 'Editar plano' : 'Novo plano de aula'}</h2>
+      <label class="hb-field"><span>Nome do plano</span><input class="inp" name="name" required maxlength="60" value="${esc(p.name||'')}" placeholder="Ex.: Iniciante, mês 1" ${p.id?'':'autofocus'}></label>
+      <div class="hb-field"><span>Músicas do plano</span>${lib.length ? `<div class="tg-list">${lib.map(s => { const on = (p.songs||[]).includes(s.id); return `<button type="button" class="tg${on?' on':''}" data-h="plan-song" data-id="${s.id}" style="--c:${colorFor(s.id)}" aria-pressed="${on}"><span class="tg-c">${on?IC.check:''}</span><span class="hb-rmain"><b>${esc(s.title)}</b><small>${esc(s.artist||'')}</small></span></button>`; }).join('')}</div>` : '<small>Cadastre músicas nas suas pastas para incluir no plano.</small>'}</div>
+      <label class="hb-field"><span>Lição de casa (uma por linha)</span><textarea class="inp" name="homework" rows="4" placeholder="Treinar a troca Em → Am 1 minuto por dia&#10;Batida ↓ ↓↑ no metrônomo a 70 bpm">${esc((p.homework||[]).join('\n'))}</textarea></label>
+      <label class="hb-field"><span>Recado para o aluno</span><textarea class="inp" name="summary" rows="2" placeholder="O que vamos trabalhar neste plano">${esc(p.summary||'')}</textarea></label>
+      <div class="hb-form-act"><button class="btn primary" type="submit">Salvar plano</button><button class="btn ghost" type="button" data-h="back">Cancelar</button></div>
+      ${p.id ? `<div class="hb-danger"><button class="btn ghost danger sm" type="button" data-h="plan-del" data-id="${p.id}">${v.armed?'Toque de novo para apagar':'Apagar plano'}</button></div>` : ''}</form>`;
+  }
+  function viewApply(v){
+    const p = st.plans.find(x => x.id===v.id); if (!p) return '';
+    return `<div class="hb-form"><h2>Aplicar "${esc(p.name)}"</h2><p class="hb-hint">Em cada pasta escolhida entram as ${(p.songs||[]).length} músicas e uma aula de hoje com ${(p.homework||[]).length} ${(p.homework||[]).length===1?'lição':'lições'} de casa.</p>
+      ${targetsHTML(v.sel)}<div class="hb-form-act"><button class="btn primary" data-h="apply-go" ${v.sel.length?'':'disabled'}>Aplicar em ${v.sel.length||''} ${v.sel.length===1?'pasta':'pastas'}</button><button class="btn ghost" data-h="back">Cancelar</button></div></div>`;
+  }
+  async function teachClick(h, t, id, v){
+    const sb = W().sb;
+    switch (h){
+      case 'wk': st.week = addDays(st.week || weekStart(today()), +v); draw(); return true;
+      case 'att': { const [sid, date, r] = id.split('_'); const key = id; const cur = st.att[key];
+        if (!v){ await run(async () => { await tDel('attendance', key); delete st.att[key]; draw(); say('Desfeito'); }); return true; }
+        const row = { student_id: sid, date, status: cur && cur.status===v ? '' : v };
+        await run(async () => { if (!row.status){ await tDel('attendance', key); delete st.att[key]; } else { await tSet('attendance', key, row); st.att[key] = { id:key, ...row }; } buzz(10); draw(); }); return true; }
+      case 'move': st.moving = st.moving===id ? null : id; draw(); return true;
+      case 'remind-all': { const tm = slotsOn(addDays(today(),1)).filter(x => x.s.phone); const x = tm[st.remindI = ((st.remindI ?? -1) + 1) % tm.length]; if (x){ window.open('https://wa.me/' + phoneDigits(x.s.phone) + '?text=' + encodeURIComponent(lessonReminder(x.s, x.iso, x.time)), '_blank'); if (tm.length > 1) say('Toque de novo para o próximo: ' + tm[(st.remindI+1)%tm.length].s.name.split(' ')[0]); } return true; }
+      case 'send': { const s = st.lib.songs.find(x => x.id===id); go({ type:'send', song: s, from: t.dataset.nb, sel: [] }); return true; }
+      case 'tg': { const sel = st.view.sel; const i = sel.indexOf(id); i<0 ? sel.push(id) : sel.splice(i,1); draw(); return true; }
+      case 'send-go': await run(async () => { const n = await sendSongsTo([st.view.song], st.view.sel); back(); say(n === 1 ? 'Música enviada' : 'Enviada para ' + n + ' pastas'); }); return true;
+      case 'plan-new': if (!st.lib || st.lib.loading){ say('Carregando a biblioteca…'); return true; } go({ type:'plan', plan:{ songs:[], homework:[] } }); return true;
+      case 'plan-edit': go({ type:'plan', plan: JSON.parse(JSON.stringify(st.plans.find(x => x.id===id))) }); return true;
+      case 'plan-song': { const p = st.view.plan; p.songs = p.songs || []; const i = p.songs.indexOf(id); i<0 ? p.songs.push(id) : p.songs.splice(i,1); const f = root.querySelector('form[data-form="plan"]'); if (f){ p.name = f.name.value; p.homework = f.homework.value.split('\n').filter(x=>x.trim()); p.summary = f.summary.value; } draw(); return true; }
+      case 'plan-del': if (!st.view.armed){ st.view.armed = true; draw(); return true; } await run(async () => { await tDel('plans', id); st.plans = st.plans.filter(p => p.id!==id); back(); say('Plano apagado'); }); return true;
+      case 'plan-apply': go({ type:'apply', id, sel: [] }); return true;
+      case 'apply-go': await run(async () => { const p = st.plans.find(x => x.id===st.view.id); const songs = (st.lib.songs||[]).filter(s => (p.songs||[]).includes(s.id));
+        const n = await sendSongsTo(songs, st.view.sel);
+        const rows = st.view.sel.map(nb => ({ notebook_id: nb, collection:'lessons', id: 'l'+rid(''), data: { date: today(), summary: (p.summary ? p.summary + '\n' : '') + 'Plano: ' + p.name, homework: (p.homework||[]).map(t => ({ t, done:false })), questions: [], songs: [], createdAt: new Date().toISOString() }, updated_at: new Date().toISOString() }));
+        if (rows.length) must(await sb.from('items').insert(rows));
+        back(); confettiHub(); say('Plano aplicado em ' + st.view.sel.length + (st.view.sel.length===1?' pasta':' pastas')); }); return true;
+    }
+    return false;
+  }
+  function confettiHub(){ try { window.FLUID_CONFETTI && window.FLUID_CONFETTI(); } catch(e){} }
+  const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch(e){} };
 
   /* ---------- estilos ---------- */
   const css = `
@@ -760,8 +951,9 @@
   .hb-me span{min-width:0}.hb-me b{display:block;font-family:var(--fDisplay);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hb-me small{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hb-icon{width:40px;height:40px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;padding:0;border:1px solid var(--glassEdgeSoft,var(--line));background:var(--glass,var(--surface));color:var(--text);flex-shrink:0}
   .hb-icon.sm{width:34px;height:34px}.hb-icon svg{width:18px;height:18px}
-  .hb-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:4px 16px 6px;padding:4px;border-radius:999px;background:var(--glass2,var(--surface2));border:1px solid var(--line)}
-  .hb-tabs button{position:relative;height:38px;border:0;border-radius:999px;background:transparent;font-size:13.5px;font-weight:600;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px;padding:0 4px}
+  .hb-tabs{display:flex;overflow-x:auto;scrollbar-width:none;gap:4px;margin:4px 16px 6px;padding:4px;border-radius:999px;background:var(--glass2,var(--surface2));border:1px solid var(--line)}
+  .hb-tabs::-webkit-scrollbar{display:none}
+  .hb-tabs button{flex:1 0 auto;position:relative;height:38px;padding:0 14px!important;border:0;border-radius:999px;background:transparent;font-size:13.5px;font-weight:600;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px;padding:0 4px}
   .hb-tabs button[aria-selected="true"]{background:var(--solid,#fff);color:var(--text);box-shadow:0 4px 14px -6px rgba(20,22,60,.25)}
   .hb-dot{min-width:18px;height:18px;padding:0 5px;border-radius:999px;font-size:11px;color:#fff;display:inline-flex;align-items:center;justify-content:center}
   .hb-dot.bad{background:#EF4444}.hb-dot.warn{background:#F59E0B}
@@ -968,11 +1160,49 @@
   .hb-cardload{height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
   .hb-share.col{flex-direction:column}.hb-share.col .btn{width:100%;flex:none}
   .linkish{border:0;background:none;padding:0;color:var(--accentInk);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+
+  .evo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  @media (max-width:520px){.evo-grid{grid-template-columns:1fr 1fr}}
+  .evo-grid div{padding:10px 12px;border-radius:16px;background:linear-gradient(160deg,color-mix(in srgb,var(--c) 14%,transparent),color-mix(in srgb,var(--c) 4%,transparent));border:1px solid color-mix(in srgb,var(--c) 22%,transparent)}
+  .evo-grid b{display:block;font-family:var(--fDisplay);font-size:22px}.evo-grid b i{font-style:normal;font-size:12px;color:var(--muted);margin-left:3px}
+  .evo-grid small{font-size:11.5px;color:var(--muted)}
+  .evo-week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;height:64px;align-items:end}
+  .evo-week span{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+  .evo-week i{display:block;width:100%;max-width:18px;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#A78BFA,#6366F1)}
+  .evo-week small{font-size:10.5px;color:var(--faint);font-weight:600}
+  .evo-chips{display:flex;gap:6px;flex-wrap:wrap}.evo-chips span{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(34,197,94,.12);color:#15803D}
+  .ag-days{display:flex;flex-direction:column;gap:12px}
+  .ag-day{padding:12px;border-radius:20px;background:var(--glass,var(--surface));border:1px solid var(--glassEdgeSoft,var(--line))}
+  .ag-day.today{border-color:color-mix(in srgb,var(--accent) 45%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 10%,transparent)}
+  .ag-day.past{opacity:.85}
+  .ag-day h4{margin:0 0 8px;display:flex;align-items:center;gap:8px;font-family:var(--fDisplay);font-size:14px}
+  .ag-day h4 em{font-style:normal;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--accent);color:var(--onAccent)}
+  .ag-free{margin:0;font-size:12.5px;color:var(--faint)}
+  .ag-slot{position:relative;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 6px 6px 10px;border-radius:14px;margin-top:6px;background:var(--glass2,var(--surface2));border:1px solid var(--line)}
+  .ag-slot::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--c)}
+  .ag-slot.ok{background:rgba(34,197,94,.08)}.ag-slot.falta{background:rgba(239,68,68,.07)}.ag-slot.moved{opacity:.7}
+  .ag-main{display:flex;align-items:center;gap:10px;flex:1;min-width:0;border:0;background:none;padding:0;text-align:left;color:var(--text)}
+  .ag-act{display:flex;gap:4px}
+  .ag-b{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--glass,var(--surface));color:var(--muted);display:flex;align-items:center;justify-content:center;padding:0}
+  .ag-b svg{width:15px;height:15px}
+  .ag-b.ok.on{background:#22C55E;color:#fff;border-color:transparent}.ag-b.bad.on{background:#EF4444;color:#fff;border-color:transparent}
+  .ag-move{display:flex;gap:6px;width:100%;flex-wrap:wrap}.ag-move .inp{height:38px;border-radius:12px;padding:0 10px;flex:1;min-width:120px}
+  .tg-list{display:flex;flex-direction:column;gap:6px}
+  .tg{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 12px;border-radius:16px;border:1px solid var(--line);background:var(--glass2,var(--surface2));color:var(--text)}
+  .tg.on{border-color:color-mix(in srgb,var(--c) 50%,transparent);background:color-mix(in srgb,var(--c) 10%,var(--glass2,var(--surface2)))}
+  .tg-c{width:24px;height:24px;border-radius:8px;flex-shrink:0;border:2px solid color-mix(in srgb,var(--c) 50%,var(--line));display:flex;align-items:center;justify-content:center;color:#fff}
+  .tg.on .tg-c{background:var(--c);border-color:var(--c)}.tg-c svg{width:14px;height:14px}
+  .plan-ic,.lib-dot{width:38px;height:38px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;background:linear-gradient(160deg,#C4B5FD,#7C3AED)}
+  .lib-dot{border-radius:50%;background:radial-gradient(circle at 34% 28%,color-mix(in srgb,var(--c) 45%,#fff),var(--c) 60%,color-mix(in srgb,var(--c) 70%,#000))}
+  .plan-ic svg{width:18px;height:18px}
+  .hb-row.static{gap:10px}
+  .hb-body>.hb-search{flex:none;height:44px}
   `;
   const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
 
   window.FluidHub = {
     open, close,
+    sendSong(song){ mount(); st.open = true; root.hidden = false; document.documentElement.classList.add('hb-lock'); st.view = { type:'send', song, from: W().current().id, sel: [] }; draw(); W().loadNotebooks().then(loadFolders).then(draw).catch(()=>{}); },
     boot(){ mount(); loadTeacher().catch(() => {}); },
     chipHTML(){
       const w = W(); if (!w) return '';

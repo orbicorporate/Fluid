@@ -1738,7 +1738,7 @@ function songSheet(s){
         ${view.confirmDel ? `<div class="confirm">Apagar "${esc(s.title||'esta música')}"? Não dá para desfazer.<span style="flex:1"></span><button class="btn ghost" data-act="del-no">Cancelar</button><button class="btn danger" data-act="del-yes">${I.trash}Apagar</button></div>` : `<button class="btn ghost danger" data-act="del">${I.trash}Apagar música</button>`}
       </section>
     </div>
-    <div class="sheet-foot"><button class="btn" data-act="trocas" ${new Set(names.filter(n=>n&&n!=='?')).size>1?'':'disabled'}>${I.tap}Treinar trocas</button><button class="btn primary" data-act="practice" ${names.length?'':'disabled'}>${I.play}Praticar com metrônomo</button></div>
+    <div class="sheet-foot">${window.FluidHub && window.FluidWeb ? `<button class="btn" data-act="send-song" aria-label="Enviar para outra pasta">${I.copy}Enviar</button>` : ''}<button class="btn" data-act="trocas" ${new Set(names.filter(n=>n&&n!=='?')).size>1?'':'disabled'}>${I.tap}Treinar trocas</button><button class="btn primary" data-act="practice" ${names.length?'':'disabled'}>${I.play}Praticar com metrônomo</button></div>
   </aside>`;
 }
 function fmtDate(d){ try { const [y,m,dd]=d.split('-'); return `${dd}/${m}`; } catch(e){ return d; } }
@@ -1775,6 +1775,7 @@ function bindSong(s){
     if (act==='del-yes') { closeSheet(); deleteSong(s.id); toast('Música apagada'); }
     if (act==='practice') openPractice(s);
     if (act==='trocas') openTrocas(s);
+    if (act==='send-song' && window.FluidHub) window.FluidHub.sendSong(JSON.parse(JSON.stringify(s)));
     if (act==='ly-edit'){ const on = !(view.lyEdit && view.lyEditId===s.id); view.lyEdit = on; view.lyEditId = s.id; if (on && view.paint==null){ const u = uniqueChordIdx(s); view.paint = u.length ? u[0][1] : 'erase'; } refreshSheet(); return; }
     if (act==='ly-paste'){ openEditor(s, {lyrics:true}); return; }
     if (act==='copy') { const txt = toMessage(s); try { navigator.clipboard.writeText(txt).then(()=>toast('Copiado no formato do professor'), ()=>showCopy(txt)); } catch(err){ showCopy(txt); } }
@@ -3040,6 +3041,7 @@ document.addEventListener('click', e => {
   if (a === 'click'){ p.mute = !p.mute; renderPractice(); return; }
 });
 /* ================= FIM TOCAR JUNTO ================= */
+window.FLUID_CONFETTI = () => confetti(110);
 
 /* @@END-EXTRAS@@ */
 

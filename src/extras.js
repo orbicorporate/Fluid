@@ -389,3 +389,4 @@ document.addEventListener('click', e => {
   if (a === 'click'){ p.mute = !p.mute; renderPractice(); return; }
 });
 /* ================= FIM TOCAR JUNTO ================= */
+window.FLUID_CONFETTI = () => confetti(110);
