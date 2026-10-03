@@ -1,0 +1,200 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>fluid motion audit — 2026-10-03</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+    :root {
+      /* Cool slate-graphite neutrals (hue 255). In the full report these
+         are overridden by a global theme toggle; here the shell flips via
+         prefers-color-scheme for standalone preview. */
+      --ink:        oklch(0.155 0.006 255);
+      --surface:    oklch(0.195 0.007 255);
+      --surface-2:  oklch(0.235 0.008 255);
+      --paper:      oklch(0.945 0.004 255);
+      --paper-dim:  oklch(0.800 0.006 255);
+      --muted:      oklch(0.680 0.008 255);
+      --faint:      oklch(0.505 0.008 255);
+      --line:       oklch(0.95 0.01 255 / 0.09);
+      --line-strong:oklch(0.95 0.01 255 / 0.16);
+
+      --display: "Familjen Grotesk", "Hanken Grotesk", system-ui, sans-serif;
+      --sans: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root:not(:has(#theme-dark:checked)) {
+        --ink:        oklch(0.985 0.003 255);
+        --surface:    oklch(0.965 0.004 255);
+        --surface-2:  oklch(0.940 0.005 255);
+        --paper:      oklch(0.180 0.006 255);
+        --paper-dim:  oklch(0.330 0.008 255);
+        --muted:      oklch(0.475 0.010 255);
+        --faint:      oklch(0.640 0.009 255);
+        --line:       oklch(0.180 0.010 255 / 0.12);
+        --line-strong:oklch(0.180 0.010 255 / 0.22);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      background: var(--ink);
+      color: var(--paper);
+      font-family: var(--sans);
+      margin: 0;
+      padding: 48px;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* visually-hidden (stage-toggle radios) */
+    .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+    /* ───────────── Demo card ───────────── */
+    .demo { position: relative; width: 380px; }
+    .demo__bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .demo__meta { min-width: 0; }
+    .demo__title { display: block; font-size: 13.5px; font-weight: 600; color: var(--paper); line-height: 1.3; }
+    .demo__timing { display: block; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .demo__controls { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .demo__loop { font-family: var(--mono); font-size: 12px; color: var(--faint); }
+
+    /* segmented Auto / Light / Dark stage toggle (pure CSS).
+       Auto = follow ambient theme via --surface-2 + --paper.
+       Light / Dark = locked overrides (hardcoded values, ignore ambient). */
+    .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 100px; overflow: hidden; }
+    .seg label { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 4px 9px; cursor: pointer; user-select: none; transition: background 0.15s ease, color 0.15s ease; }
+    .demo input[id$="-a"]:checked ~ .demo__bar .seg label[for$="-a"],
+    .demo input[id$="-l"]:checked ~ .demo__bar .seg label[for$="-l"],
+    .demo input[id$="-d"]:checked ~ .demo__bar .seg label[for$="-d"] {
+      background: color-mix(in oklch, var(--paper) 12%, transparent);
+      color: var(--paper);
+    }
+
+    .demo__stage {
+      /* AUTO default — stage uses the ambient elevated surface */
+      --st-bg: var(--surface-2);
+      --st-fg: var(--paper);
+      --st-line: var(--line-strong);
+      --st-dim: color-mix(in oklch, var(--paper) 55%, transparent);
+      background: var(--st-bg); color: var(--st-fg);
+      border: 1px solid var(--line); border-radius: 10px;
+      padding: 32px 24px; min-height: 168px;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    /* Locked Light: hardcoded light, regardless of ambient theme */
+    .demo input[id$="-l"]:checked ~ .demo__stage {
+      --st-bg: oklch(0.985 0.003 255);
+      --st-fg: oklch(0.180 0.006 255);
+      --st-line: oklch(0.180 0.010 255 / 0.18);
+      --st-dim: oklch(0.180 0.010 255 / 0.45);
+    }
+    /* Locked Dark: hardcoded dark, regardless of ambient theme */
+    .demo input[id$="-d"]:checked ~ .demo__stage {
+      --st-bg: oklch(0.180 0.006 255);
+      --st-fg: oklch(0.985 0.003 255);
+      --st-line: oklch(0.985 0.010 255 / 0.18);
+      --st-dim: oklch(0.985 0.010 255 / 0.50);
+    }
+
+    /* Generic UI primitives for use inside motion targets. All theme via
+       stage tokens, NEVER page tokens — so they contrast correctly when a
+       stage is locked to a different theme than the report. */
+    .ui-btn { display: inline-flex; align-items: center; justify-content: center; padding: 9px 18px; border-radius: 8px; background: var(--st-fg); color: var(--st-bg); font-family: var(--sans); font-size: 13px; font-weight: 600; }
+    .ui-card { background: var(--st-bg); border: 1px solid var(--st-line); border-radius: 10px; padding: 14px 16px; min-width: 180px; box-shadow: 0 8px 24px oklch(0 0 0 / 0.12); }
+    .ui-row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--st-fg); }
+    .ui-check { width: 22px; height: 22px; border-radius: 7px; background: var(--st-fg); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ui-check svg { width: 13px; height: 13px; stroke: var(--st-bg); }
+    .ui-num { font-family: var(--display); font-size: 34px; font-weight: 700; color: var(--st-fg); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+    .ui-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--st-dim); }
+
+    /* prefers-reduced-motion — disables every per-finding animation and
+       hides the loop indicator. The per-finding @keyframes 100% state
+       must match the motion-target's default rendering so the reduce
+       fallback shows the correct final visual. */
+    @media (prefers-reduced-motion: reduce) {
+      .demo__loop { display: none; }
+      [class*="__mt"], [class*="__mt"] * { animation: none !important; transition: none !important; }
+    }
+
+    
+:root:has(#theme-light:checked){--ink:oklch(0.985 0.003 255);--surface:oklch(0.965 0.004 255);--surface-2:oklch(0.940 0.005 255);--paper:oklch(0.180 0.006 255);--paper-dim:oklch(0.330 0.008 255);--muted:oklch(0.475 0.010 255);--faint:oklch(0.640 0.009 255);--line:oklch(0.180 0.010 255 / 0.12);--line-strong:oklch(0.180 0.010 255 / 0.22)}
+:root{--crit:oklch(0.655 0.185 25);--imp:oklch(0.805 0.125 78);--opp:oklch(0.745 0.135 152)}
+body{display:block;padding:0} .wrap{max-width:1080px;margin:0 auto;padding:40px 24px 80px}
+.theme-switch{display:flex;justify-content:flex-end} .theme-switch .seg label{font-size:10px}
+:root:has(#theme-dark:checked) .theme-switch label[for=theme-dark],:root:has(#theme-light:checked) .theme-switch label[for=theme-light]{background:color-mix(in oklch,var(--paper) 12%,transparent);color:var(--paper)}
+.eyebrow,.mono-label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-size:40px;line-height:1.1;margin:10px 0 12px;letter-spacing:-.02em} h2{font-family:var(--display);font-size:24px;margin:56px 0 16px} h3{font-family:var(--display);font-size:20px;margin:0 0 6px}
+.lede{color:var(--paper-dim);font-size:17px;max-width:70ch} .stats{display:flex;gap:24px;margin-top:24px;font-family:var(--mono);font-size:13px} .stats a{color:var(--paper);text-decoration:none} .stats b{font-size:22px;font-family:var(--display);margin-right:6px}
+.assessment p{font-family:var(--display);font-size:20px;line-height:1.45;max-width:72ch}
+table{width:100%;border-collapse:collapse;font-size:14px} td,th{text-align:left;padding:12px 10px;border-top:1px solid var(--line);vertical-align:top} th{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+.lens-sec{border:1px solid var(--line);border-radius:14px;padding:24px;margin:20px 0;background:var(--surface)} .weight{font-family:var(--mono);font-size:11px;border:1px solid var(--line-strong);border-radius:100px;padding:3px 10px;margin-left:10px;color:var(--muted)}
+.lens-list{padding-left:18px} .lens-list li{margin:6px 0}
+.finding-row{display:grid;grid-template-columns:1fr 380px;gap:28px;padding:22px 0;border-top:1px solid var(--line);transition:border-color .2s ease} .finding-row h4{font-family:var(--display);font-size:18px;margin:8px 0}
+.finding-row p{margin:8px 0;color:var(--paper-dim);font-size:14.5px;line-height:1.55} .label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)} .fix{background:var(--surface-2);border-radius:10px;padding:4px 14px} .loc code{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.find-tags{display:flex;gap:6px;flex-wrap:wrap} .chip{font-family:var(--mono);font-size:10.5px;border:1px solid var(--line-strong);border-radius:100px;padding:2px 9px;color:var(--muted)} .chip.crit{color:var(--crit);border-color:var(--crit)} .chip.imp{color:var(--imp);border-color:var(--imp)} .chip.ok{color:var(--opp);border-color:var(--opp)}
+.lens-take{margin-top:18px;padding:14px 16px;border-radius:10px;background:var(--surface-2);font-size:14.5px}
+.timing{width:100%;max-width:760px} .tz-g{fill:var(--opp);opacity:.18} .tz-m{fill:var(--imp);opacity:.18} .tz-s{fill:var(--crit);opacity:.18} .tl{fill:var(--muted);font-family:var(--mono);font-size:11px} .td{fill:var(--paper)} .tdl{fill:var(--ink);font-family:var(--mono);font-size:10px;font-weight:600}
+footer{margin-top:64px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+@media (max-width:860px){.finding-row{grid-template-columns:1fr} .demo{width:100%}}
+@media (prefers-reduced-motion:no-preference){ @keyframes m1{0%{opacity:0;transform:translateY(8px)}13%{opacity:1;transform:none}100%{opacity:1;transform:none}} .demo-1__mt{animation:m1 3s cubic-bezier(.23,1,.32,1) infinite}
+@keyframes m2{0%{opacity:.4}10%{opacity:1}100%{opacity:1}} .demo-2__mt{animation:m2 3s ease-out infinite}
+@keyframes m3{0%{opacity:1;transform:none}25%{opacity:1;transform:none}45%{opacity:0;transform:translateX(24px)}60%{opacity:0;transform:translateX(24px)}75%{opacity:1;transform:none}100%{opacity:1;transform:none}} .demo-3__mt{animation:m3 3s cubic-bezier(.4,0,1,1) infinite}
+@keyframes m4{0%{opacity:0}1%{opacity:1}100%{opacity:1}} .demo-4__mt{animation:m4 3s linear infinite}
+@keyframes m5{0%{transform:none}20%{transform:translateY(-6px)}40%{transform:none}100%{transform:none}} .demo-5__mt{animation:m5 3s ease-in-out infinite}
+@keyframes m6{0%{transform:translateX(0)}10%{transform:translateX(0)}20%{transform:translateX(96px)}50%{transform:translateX(96px)}60%{transform:translateX(0)}100%{transform:translateX(0)}} .demo-6__mt{animation:m6 3s cubic-bezier(.32,.72,0,1) infinite}
+@keyframes m7{0%{opacity:0;transform:translateY(10px) scale(.97)}12%{opacity:1;transform:none}100%{opacity:1;transform:none}} .demo-7__mt{animation:m7 3s cubic-bezier(.23,1,.32,1) infinite}
+@keyframes m8{0%{transform:none}8%{transform:translateX(30px)}20%{transform:translateX(220px);opacity:0}60%{transform:translateX(220px);opacity:0}61%{transform:none;opacity:1}100%{transform:none;opacity:1}} .demo-8__mt{animation:m8 3s cubic-bezier(.23,1,.32,1) infinite}
+@keyframes m9{0%{opacity:0;transform:translateX(16px)}8%{opacity:1;transform:none}100%{opacity:1;transform:none}} .demo-9__mt{animation:m9 3s cubic-bezier(.23,1,.32,1) infinite} }
+</style></head><body><div class="wrap">
+<input class="vh" type="radio" name="theme" id="theme-dark" checked><input class="vh" type="radio" name="theme" id="theme-light">
+<div class="theme-switch"><div class="seg"><label for="theme-dark">Escuro</label><label for="theme-light">Claro</label></div></div>
+<p class="eyebrow">Motion audit · design-motion-principles</p><h1>Fluid: movimento com propósito no caderno de violão</h1>
+<p class="lede">App de celular (PWA) para alunos e professores de violão: tela Hoje, barra de baixo, gestos, treino com metrônomo e painel do professor. HTML, CSS e JavaScript sem framework.</p>
+<div class="stats"><a href="#rec-crit"><b>5</b>Críticos</a><a href="#rec-imp"><b>4</b>Importantes</a><a href="#rec-opp"><b>4</b>Oportunidades</a><span><b>9</b>corrigidos</span></div>
+<section class="assessment"><p class="mono-label">Geral</p><p>A base tinha bom gosto e o pedido era encantar. Mas o encanto estava espalhado por todo lado: entradas que se repetiam a cada atualização, pulsos infinitos e quiques em controles do dia a dia. Tudo foi aplicado: a alegria fica nos momentos raros (conquista, lição zerada, meta da semana, telas vazias) e o uso diário ficou rápido e calmo.</p></section>
+<h2>01 · Lentes</h2><table><tr><th>Lente</th><th>Veredito</th><th>Leitura</th></tr>
+<tr><td>Jakub Krehel<span class="weight">Principal</span></td><td><span class="dot" style="background:var(--imp)"></span>Misto</td><td>Boas folhas e telas vazias; faltava sutileza nas entradas e saídas.</td></tr>
+<tr><td>Emil Kowalski<span class="weight">Secundária</span></td><td><span class="dot" style="background:var(--crit)"></span>Problema</td><td>Ações frequentes animavam demais; atalhos de teclado também.</td></tr>
+<tr><td>Jhey Tompkins<span class="weight">Seletiva</span></td><td><span class="dot" style="background:var(--opp)"></span>Forte</td><td>Ilustrações, confete e logo dão personalidade nos lugares certos.</td></tr></table>
+<h2>02 · Onde ficam os tempos</h2>
+<svg class="timing" viewBox="0 0 660 236" role="img" aria-label="Duração das animações depois da revisão"><rect class="tz-g" x="40" y="20" width="300" height="150"/><rect class="tz-m" x="340" y="20" width="200" height="150"/><rect class="tz-s" x="540" y="20" width="100" height="150"/>
+<text class="tl" x="40" y="190">0</text><text class="tl" x="130" y="190">100ms</text><text class="tl" x="330" y="190">300ms</text><text class="tl" x="530" y="190">500ms</text>
+<text class="tl" x="44" y="36">instantâneo e responsivo</text><text class="tl" x="346" y="36">deliberado</text><text class="tl" x="546" y="36">lento</text>
+<circle class="td" cx="40" cy="60" r="11"/><text class="tdl" x="40" y="63.5" text-anchor="middle">1</text><circle class="td" cx="160" cy="85" r="11"/><text class="tdl" x="160" y="88.5" text-anchor="middle">2</text><circle class="td" cx="180" cy="110" r="11"/><text class="tdl" x="180" y="113.5" text-anchor="middle">3</text><circle class="td" cx="280" cy="60" r="11"/><text class="tdl" x="280" y="63.5" text-anchor="middle">4</text><circle class="td" cx="300" cy="135" r="11"/><text class="tdl" x="300" y="138.5" text-anchor="middle">5</text><circle class="td" cx="340" cy="85" r="11"/><text class="tdl" x="340" y="88.5" text-anchor="middle">6</text><circle class="td" cx="360" cy="110" r="11"/><text class="tdl" x="360" y="113.5" text-anchor="middle">7</text><circle class="td" cx="460" cy="60" r="11"/><text class="tdl" x="460" y="63.5" text-anchor="middle">8</text><circle class="td" cx="460" cy="135" r="11"/><text class="tdl" x="460" y="138.5" text-anchor="middle">9</text>
+<text class="tl" x="40" y="210">1 teclado (0) · 2 toque na barra (120) · 3 saída de aba (140) · 4 entrada de aba e menu + (240)</text><text class="tl" x="40" y="226">5 próxima música (260) · 6 pílula (300) · 7 entrada de card (320) · 8 folhas (420) · 9 abrir música (420)</text></svg>
+<p>Antes: abrir música 560ms, quique da pílula 550ms, entrada de aba 380ms. Folhas e abrir música ficam em 420ms de propósito: são raras e precisam de continuidade espacial.</p>
+<h2>03 · Jakub Krehel: acabamento de produção</h2><div class="lens-sec"><p class="mono-label">Funciona bem</p><ul class="lens-list"><li>Folhas que sobem de baixo e fecham puxando, com saída mais curta que a entrada.</li><li>Música que cresce a partir do card ao abrir.</li><li>Desfazer com barra de tempo.</li></ul><p class="mono-label">Problemas</p><div class="finding-row" data-sev="crit"><div><div class="find-tags"><span class="chip crit">Crítico</span><span class="chip">Jakub</span><span class="chip ok">Corrigido</span></div>
+<h4>Concluir lição animava a altura da linha</h4><p><span class="label">O que</span>Ao marcar uma lição, a linha encolhia animando height, margin e padding.</p><p><span class="label">Por que importa</span>Altura é propriedade de layout: força recálculo da página a cada quadro e engasga em celular simples.</p><div class="fix"><p><span class="label">Movimento aplicado</span>Check desenhado em 220ms com um anel que se expande por sombra, depois a linha sai só com opacidade e 24px para o lado (240ms). A lista se reorganiza quando a tela atualiza.</p></div><p class="loc"><code>src/ux.css · .check.checking, .leaving</code></p></div><div class="demo"><input class="vh" type="radio" name="st3" id="st3-a" checked><input class="vh" type="radio" name="st3" id="st3-l"><input class="vh" type="radio" name="st3" id="st3-d">
+<div class="demo__bar"><div class="demo__meta"><span class="demo__title">Check e saída sem layout</span><span class="demo__timing">220ms + 240ms · ease-out / ease-in</span></div><div class="demo__controls"><div class="seg"><label for="st3-a">Auto</label><label for="st3-l">Claro</label><label for="st3-d">Escuro</label></div><span class="demo__loop">↻</span></div></div>
+<div class="demo__stage"><div class="demo-3__mt"><div class="ui-row"><span class="ui-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M5 13l4 4L19 7"/></svg></span><span>Troca G e C, 5 minutos</span></div></div></div></div></div><div class="finding-row" data-sev="imp"><div><div class="find-tags"><span class="chip imp">Importante</span><span class="chip">Emil · Jakub</span><span class="chip ok">Corrigido</span></div>
+<h4>Menu do + nascia de scale(.6)</h4><p><span class="label">O que</span>As opções do menu entravam de 60% do tamanho, com quique e atraso de 34ms entre itens.</p><p><span class="label">Por que importa</span>Partir de escala muito baixa parece artificial. O menu é uma ação utilitária.</p><div class="fix"><p><span class="label">Movimento aplicado</span>Entram de 97% do tamanho e 10px abaixo, 240ms, 22ms entre itens, origem embaixo, perto do botão. Saída em 140ms.</p></div><p class="loc"><code>src/ux.css · .fab-it</code></p></div><div class="demo"><input class="vh" type="radio" name="st7" id="st7-a" checked><input class="vh" type="radio" name="st7" id="st7-l"><input class="vh" type="radio" name="st7" id="st7-d">
+<div class="demo__bar"><div class="demo__meta"><span class="demo__title">Itens a partir do botão</span><span class="demo__timing">240ms · ease-out · 22ms entre itens</span></div><div class="demo__controls"><div class="seg"><label for="st7-a">Auto</label><label for="st7-l">Claro</label><label for="st7-d">Escuro</label></div><span class="demo__loop">↻</span></div></div>
+<div class="demo__stage"><div class="demo-7__mt"><div class="ui-btn">Registrar aula</div></div></div></div></div><p class="mono-label">Oportunidades</p><ul class="lens-list"><li>Trocar o ícone de tocar e pausar com opacidade e escala em vez de troca seca.</li></ul><div class="lens-take">Pela lente de Jakub: o app ganha quando a animação some e fica só a sensação de suavidade.</div></div>
+<h2>04 · Emil Kowalski: contenção e velocidade</h2><div class="lens-sec"><p class="mono-label">Funciona bem</p><ul class="lens-list"><li>Toques com retorno imediato, gestos que seguem o dedo, vibração curta.</li></ul><p class="mono-label">Problemas</p><div class="finding-row" data-sev="crit"><div><div class="find-tags"><span class="chip crit">Crítico</span><span class="chip">Emil · Jakub</span><span class="chip ok">Corrigido</span></div>
+<h4>Entradas repetiam a cada atualização da tela</h4><p><span class="label">O que</span>Todo card da Hoje, de Músicas e de Aulas tinha animação de entrada com atraso em cascata. Como a tela é redesenhada a cada mudança (marcar lição, chegar dado novo, trocar filtro), tudo "entrava" de novo várias vezes por minuto.</p><p><span class="label">Por que importa</span>Ação de alta frequência com animação vira ruído e faz o app parecer lento. Cascata em várias listas é o padrão mais típico de interface genérica.</p><div class="fix"><p><span class="label">Movimento aplicado</span>Entrada única de 320 a 380ms (opacidade e 8px de deslocamento) só na primeira abertura e na troca de aba. Cascata apenas na Hoje, 40ms por bloco. Atualizações da tela não animam.</p></div><p class="loc"><code>src/ux.css · REVISÃO › #app.boot</code></p></div><div class="demo"><input class="vh" type="radio" name="st1" id="st1-a" checked><input class="vh" type="radio" name="st1" id="st1-l"><input class="vh" type="radio" name="st1" id="st1-d">
+<div class="demo__bar"><div class="demo__meta"><span class="demo__title">Entrada só na abertura</span><span class="demo__timing">380ms · ease-out (.23,1,.32,1)</span></div><div class="demo__controls"><div class="seg"><label for="st1-a">Auto</label><label for="st1-l">Claro</label><label for="st1-d">Escuro</label></div><span class="demo__loop">↻</span></div></div>
+<div class="demo__stage"><div class="demo-1__mt"><div class="ui-card"><div class="ui-label" style="margin-bottom:6px">Hoje</div><div class="ui-row">Treino de hoje</div></div></div></div></div></div><div class="finding-row" data-sev="crit"><div><div class="find-tags"><span class="chip crit">Crítico</span><span class="chip">Emil</span><span class="chip ok">Corrigido</span></div>
+<h4>Pulsos infinitos em indicadores</h4><p><span class="label">O que</span>Anel pulsando no botão de tocar, no "Aula agora", no dia de aula, ponto roxo brilhando em Músicas, alerta do financeiro respirando, anel da meta girando sem parar e o botão do metrônomo pulsando em 1 segundo fixo, fora do andamento real.</p><p><span class="label">Por que importa</span>Pulso contínuo disputa atenção o tempo todo e perde o significado. O do metrônomo ainda contradizia o tempo tocado.</p><div class="fix"><p><span class="label">Movimento aplicado</span>Indicadores estáticos: ponto laranja fixo para dia de aula, ponto roxo sem brilho, "Aula agora" com cor sólida. O anel da meta brilha duas vezes ao ser batido e para. O batimento fica só nos pontos do metrônomo, que seguem o andamento.</p></div><p class="loc"><code>src/ux.css · .hj-play, .dock-b.live, .dock-b.pulse, .dock-badge.glow, .metro-play.on; hub.js · .hb-alert</code></p></div><div class="demo"><input class="vh" type="radio" name="st2" id="st2-a" checked><input class="vh" type="radio" name="st2" id="st2-l"><input class="vh" type="radio" name="st2" id="st2-d">
+<div class="demo__bar"><div class="demo__meta"><span class="demo__title">Indicador estático, destaque único</span><span class="demo__timing">0ms · sem laço</span></div><div class="demo__controls"><div class="seg"><label for="st2-a">Auto</label><label for="st2-l">Claro</label><label for="st2-d">Escuro</label></div><span class="demo__loop">↻</span></div></div>
+<div class="demo__stage"><div class="demo-2__mt"><div class="ui-row"><span style="width:10px;height:10px;border-radius:50%;background:var(--st-fg)"></span><span>Aula agora</span></div></div></div></div></div><div class="finding-row" data-sev="crit"><div><div class="find-tags"><span class="chip crit">Crítico</span><span class="chip">Emil</span><span class="chip ok">Corrigido</span></div>
+<h4>Busca aberta pelo teclado animava</h4><p><span class="label">O que</span>A tecla / e Ctrl+K abriam a busca com deslize e desfoque de fundo, e o Esc fechava com animação.</p><p><span class="label">Por que importa</span>Atalho de teclado é usado por quem quer velocidade. Qualquer espera atrapalha.</p><div class="fix"><p><span class="label">Movimento aplicado</span>Pelo teclado a busca abre e fecha na hora. Pelo toque, mantém uma entrada curta de 220ms.</p></div><p class="loc"><code>src/ux.js · openSearch(viaKey); src/ux.css · .ux-layer.kbd</code></p></div><div class="demo"><input class="vh" type="radio" name="st4" id="st4-a" checked><input class="vh" type="radio" name="st4" id="st4-l"><input class="vh" type="radio" name="st4" id="st4-d">
+<div class="demo__bar"><div class="demo__meta"><span class="demo__title">Abertura instantânea pelo teclado</span><span class="demo__timing">0ms</span></div><div class="demo__controls"><div class="seg"><label for="st4-a">Auto</label><label for="st4-l">Claro</label><label for="st4-d">Escuro</label></div><span class="demo__loop">↻</span></div></div>
+<div class="demo__stage"><div class="demo-4__mt"><div class="ui-card" style="min-width:220px"><div class="ui-label">Buscar</div><div class="ui-row" style="margin-top:6px">am</div></div></div></div></div></div><div class="finding-row" data-sev="imp"><div><div class="find-tags"><span class="chip imp">Importante</span><span class="chip">Emil</span><span class="chip ok">Corrigido</span></div>
+<h4>Mola com quique em controles utilitários</h4><p><span class="label">O que</span>A pílula da barra de baixo passava do ponto e voltava. Os interruptores e os itens do menu do + também quicavam, e cada ícone da barra girava, pulava ou virava ao ser tocado.</p><p><span class="label">Por que importa</span>Trocar de aba acontece dezenas de vezes por dia. Quique em controle utilitário cansa rápido e deixa a resposta mais lenta.</p><div class="fix"><p><span class="label">Movimento aplicado</span>Pílula com a curva do iOS (300ms, sem passar do ponto). Ícone só encolhe levemente ao toque (120ms) e o rótulo da aba ativa fica sempre visível.</p></div><p class="loc"><code>src/ux.css · .dock-pill, .dock-b, .ux-tog</code></p></div><div class="demo"><input class="vh" type="radio" name="st6" id="st6-a" checked><input class="vh" type="radio" name="st6" id="st6-l"><input class="vh" type="radio" name="st6" id="st6-d">
+<div class="demo__bar"><div class="demo__meta"><span class="demo__title">Pílula sem quique</span><span class="demo__timing">300ms · cubic-bezier(.32,.72,0,1)</span></div><div class="demo__controls"><div class="seg"><label for="st6-a">Auto</label><label for="st6-l">Claro</label><label for="st6-d">Escuro</label></div><span class="demo__loop">↻</span></div></div>
+<div class="demo__stage"><div class="demo-6__mt"><div style="width:170px;height:40px;border:1px solid var(--st-line);border-radius:14px;position:relative;padding:4px"><div style="width:66px;height:30px;border-radius:10px;background:var(--st-fg);opacity:.2"></div></div></div></div></div></div><div class="finding-row" data-sev="imp"><div><div class="find-tags"><span class="chip imp">Importante</span><span class="chip">Emil</span><span class="chip ok">Corrigido</span></div>
+<h4>Gestos dependiam só da distância</h4><p><span class="label">O que</span>Deslizar linha, aba e música só confirmava depois de 80 a 120px. A cada quadro do gesto eram gravadas variáveis CSS.</p><p><span class="label">Por que importa</span>Um gesto curto e rápido é intenção clara e deveria funcionar. Variáveis CSS a cada quadro recalculam estilos em cascata.</p><div class="fix"><p><span class="label">Movimento aplicado</span>Confirma por distância ou por velocidade (acima de 0,5px/ms com 36 a 40px). Estilos aplicados direto no elemento, sem variáveis.</p></div><p class="loc"><code>src/ux.js · swEnd, tswEnd, sswEnd</code></p></div><div class="demo"><input class="vh" type="radio" name="st8" id="st8-a" checked><input class="vh" type="radio" name="st8" id="st8-l"><input class="vh" type="radio" name="st8" id="st8-d">
+<div class="demo__bar"><div class="demo__meta"><span class="demo__title">Deslize rápido confirma</span><span class="demo__timing">260ms · ease-out</span></div><div class="demo__controls"><div class="seg"><label for="st8-a">Auto</label><label for="st8-l">Claro</label><label for="st8-d">Escuro</label></div><span class="demo__loop">↻</span></div></div>
+<div class="demo__stage"><div class="demo-8__mt"><div class="ui-card"><div class="ui-row"><span class="ui-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M5 13l4 4L19 7"/></svg></span><span>Lição feita</span></div></div></div></div></div></div><div class="finding-row" data-sev="imp"><div><div class="find-tags"><span class="chip imp">Importante</span><span class="chip">Emil</span><span class="chip ok">Corrigido</span></div>
+<h4>Troca de aba longa demais</h4><p><span class="label">O que</span>A transição entre abas durava 220ms para sair e 380ms para entrar, com 30px de deslocamento.</p><p><span class="label">Por que importa</span>Ação frequente pede resposta rápida.</p><div class="fix"><p><span class="label">Movimento aplicado</span>Sai em 140ms e entra em 240ms, com 12 a 16px de deslocamento na direção da aba.</p></div><p class="loc"><code>src/ux.css · ::view-transition</code></p></div><div class="demo"><input class="vh" type="radio" name="st9" id="st9-a" checked><input class="vh" type="radio" name="st9" id="st9-l"><input class="vh" type="radio" name="st9" id="st9-d">
+<div class="demo__bar"><div class="demo__meta"><span class="demo__title">Troca de aba curta</span><span class="demo__timing">140ms saída · 240ms entrada</span></div><div class="demo__controls"><div class="seg"><label for="st9-a">Auto</label><label for="st9-l">Claro</label><label for="st9-d">Escuro</label></div><span class="demo__loop">↻</span></div></div>
+<div class="demo__stage"><div class="demo-9__mt"><div class="ui-card"><div class="ui-label">Músicas</div><div class="ui-row" style="margin-top:6px">Nomahe</div></div></div></div></div></div><p class="mono-label">Oportunidades</p><ul class="lens-list"><li>Pausar animações de logo quando a aba do navegador fica em segundo plano.</li></ul><div class="lens-take">Pela lente de Emil: o que se usa toda hora deve ser rápido; o encanto fica para o que é raro.</div></div>
+<h2>05 · Jhey Tompkins: experimentação e encanto</h2><div class="lens-sec"><p class="mono-label">Funciona bem</p><ul class="lens-list"><li>Confete ao zerar as lições e ao bater recorde, ilustrações das telas vazias, logo animada (pedido explícito da marca).</li></ul><p class="mono-label">Problemas</p><div class="finding-row" data-sev="crit"><div><div class="find-tags"><span class="chip crit">Crítico</span><span class="chip">Acessibilidade</span><span class="chip ok">Corrigido</span></div>
+<h4>Página pública sem movimento reduzido</h4><p><span class="label">O que</span>A página pública do professor tinha manchas de fundo em deriva contínua e avatar flutuando sem respeitar a preferência de movimento reduzido.</p><p><span class="label">Por que importa</span>Movimento contínuo de áreas grandes pode causar desconforto a quem tem sensibilidade vestibular.</p><div class="fix"><p><span class="label">Movimento aplicado</span>Regra de movimento reduzido adicionada à página, e o avatar flutua duas vezes e para.</p></div><p class="loc"><code>p.html</code></p></div><div class="demo"><input class="vh" type="radio" name="st5" id="st5-a" checked><input class="vh" type="radio" name="st5" id="st5-l"><input class="vh" type="radio" name="st5" id="st5-d">
+<div class="demo__bar"><div class="demo__meta"><span class="demo__title">Flutuar duas vezes e parar</span><span class="demo__timing">5s · 2 ciclos</span></div><div class="demo__controls"><div class="seg"><label for="st5-a">Auto</label><label for="st5-l">Claro</label><label for="st5-d">Escuro</label></div><span class="demo__loop">↻</span></div></div>
+<div class="demo__stage"><div class="demo-5__mt"><div style="width:56px;height:56px;border-radius:50%;background:var(--st-fg)"></div></div></div></div></div><p class="mono-label">Oportunidades</p><ul class="lens-list"><li>Ilustrações agora animam duas vezes e param; dá para reagir ao toque, como as notas pularem.</li><li>Celebração da meta da semana poderia desenhar o anel completo em vez de brilhar.</li></ul><div class="lens-take">Pela lente de Jhey: a personalidade fica onde o aluno conquista algo.</div></div>
+<h2>06 · Recomendações combinadas</h2><p class="mono-label" id="rec-crit" style="color:var(--crit)">Crítico · corrigir</p><table><tr><th>Problema</th><th>Arquivo</th><th>Correção aplicada</th></tr><tr><td>Entradas repetiam a cada atualização da tela</td><td><code>src/ux.css · REVISÃO › #app.boot</code></td><td>Entrada única de 320 a 380ms (opacidade e 8px de deslocamento) só na primeira abertura e na troca de aba. Cascata apenas na Hoje, 40ms por bloco. Atualizações da tela não animam.</td></tr><tr><td>Pulsos infinitos em indicadores</td><td><code>src/ux.css · .hj-play, .dock-b.live, .dock-b.pulse, .dock-badge.glow, .metro-play.on; hub.js · .hb-alert</code></td><td>Indicadores estáticos: ponto laranja fixo para dia de aula, ponto roxo sem brilho, "Aula agora" com cor sólida. O anel da meta brilha duas vezes ao ser batido e para. O batimento fica só nos pontos do metrônomo, que seguem o andamento.</td></tr><tr><td>Concluir lição animava a altura da linha</td><td><code>src/ux.css · .check.checking, .leaving</code></td><td>Check desenhado em 220ms com um anel que se expande por sombra, depois a linha sai só com opacidade e 24px para o lado (240ms). A lista se reorganiza quando a tela atualiza.</td></tr><tr><td>Busca aberta pelo teclado animava</td><td><code>src/ux.js · openSearch(viaKey); src/ux.css · .ux-layer.kbd</code></td><td>Pelo teclado a busca abre e fecha na hora. Pelo toque, mantém uma entrada curta de 220ms.</td></tr><tr><td>Página pública sem movimento reduzido</td><td><code>p.html</code></td><td>Regra de movimento reduzido adicionada à página, e o avatar flutua duas vezes e para.</td></tr></table>
+<p class="mono-label" id="rec-imp" style="color:var(--imp);margin-top:28px">Importante · deveria corrigir</p><table><tr><th>Problema</th><th>Arquivo</th><th>Correção aplicada</th></tr><tr><td>Mola com quique em controles utilitários</td><td><code>src/ux.css · .dock-pill, .dock-b, .ux-tog</code></td><td>Pílula com a curva do iOS (300ms, sem passar do ponto). Ícone só encolhe levemente ao toque (120ms) e o rótulo da aba ativa fica sempre visível.</td></tr><tr><td>Menu do + nascia de scale(.6)</td><td><code>src/ux.css · .fab-it</code></td><td>Entram de 97% do tamanho e 10px abaixo, 240ms, 22ms entre itens, origem embaixo, perto do botão. Saída em 140ms.</td></tr><tr><td>Gestos dependiam só da distância</td><td><code>src/ux.js · swEnd, tswEnd, sswEnd</code></td><td>Confirma por distância ou por velocidade (acima de 0,5px/ms com 36 a 40px). Estilos aplicados direto no elemento, sem variáveis.</td></tr><tr><td>Troca de aba longa demais</td><td><code>src/ux.css · ::view-transition</code></td><td>Sai em 140ms e entra em 240ms, com 12 a 16px de deslocamento na direção da aba.</td></tr></table>
+<p class="mono-label" id="rec-opp" style="color:var(--opp);margin-top:28px">Oportunidades</p><table><tr><th>Melhoria</th><th>Onde</th><th>Impacto</th></tr><tr><td>Troca animada de tocar e pausar</td><td>treino, minibarra</td><td>Estado mais claro</td></tr><tr><td>Pausar logo em segundo plano</td><td>cabeçalho</td><td>Bateria</td></tr><tr><td>Ilustrações que reagem ao toque</td><td>telas vazias</td><td>Encanto em momento raro</td></tr><tr><td>Anel da meta desenhado ao completar</td><td>card de treino</td><td>Celebração com significado</td></tr></table>
+<h2>07 · Resumo das lentes</h2><p>Lente mais usada: Emil Kowalski, porque o Fluid é aberto todos os dias e várias animações aconteciam em ações frequentes. Para seguir Jakub mais à risca: reduzir ainda os 420ms das folhas para 360ms. Para seguir Jhey mais à risca: devolver o quique só às celebrações, nunca à navegação.</p>
+<footer>fluid · 5 críticos · 4 importantes · 4 oportunidades · todos aplicados em 2026-10-03</footer></div></body></html>

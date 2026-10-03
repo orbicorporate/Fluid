@@ -1109,7 +1109,7 @@
   .hb-share{display:flex;gap:8px;flex-wrap:wrap}.hb-share .btn{flex:1}
   .hb-month{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px}
   .hb-month b{font-family:var(--fDisplay);font-size:18px;text-transform:capitalize}
-  .hb-alert{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px 15px;border-radius:18px;border:1px solid rgba(239,68,68,.35);background:linear-gradient(135deg,rgba(239,68,68,.16),rgba(249,115,22,.10));color:var(--text);animation:hbGlow 2.4s ease-in-out infinite}
+  .hb-alert{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px 15px;border-radius:18px;border:1px solid rgba(239,68,68,.35);background:linear-gradient(135deg,rgba(239,68,68,.16),rgba(249,115,22,.10));color:var(--text)}
   .hb-alert svg{width:22px;height:22px;color:#EF4444;flex-shrink:0}.hb-alert b{display:block;font-size:14.5px}.hb-alert small{display:block;font-size:12.5px;color:var(--muted)}
   @keyframes hbGlow{50%{box-shadow:0 0 0 4px rgba(239,68,68,.10)}}
   .hb-bar{display:flex;height:12px;border-radius:999px;overflow:hidden;background:var(--glass2,var(--surface2));border:1px solid var(--line)}

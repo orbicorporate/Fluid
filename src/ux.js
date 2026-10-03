@@ -53,7 +53,7 @@ window.FLUID_SOUND = uiSound;
 
 /* ---------- desfazer: toast com botão ---------- */
 function undoToast(msg, undo, ms){
-  ms = ms || 5500;
+  ms = ms || 5000;
   document.querySelectorAll('.toast').forEach(t => t.remove());
   const t = document.createElement('div'); t.className = 'toast undo'; t.setAttribute('role','status');
   t.innerHTML = `<span class="ut-msg"></span>${undo ? '<button class="ut-btn" type="button">Desfazer</button>' : ''}<i class="ut-bar" style="animation-duration:${ms}ms"></i>`;
@@ -113,8 +113,8 @@ openSong = function(id){
   const ins = [Math.max(0, c.top - r.top), Math.max(0, r.right - c.right), Math.max(0, r.bottom - c.bottom), Math.max(0, c.left - r.left)];
   if (ins[0] + ins[2] >= r.height - 10 || ins[1] + ins[3] >= r.width - 10) return;
   sh.style.animation = 'none';
-  sh.animate([{ clipPath:`inset(${ins.map(v => v.toFixed(0)+'px').join(' ')} round 22px)`, opacity:.55 }, { clipPath:'inset(0px 0px 0px 0px round 26px)', opacity:1 }], { duration:560, easing:'cubic-bezier(.2,.85,.2,1)' });
-  const b = sh.querySelector('.sheet-body'); if (b && b.animate) b.animate([{ opacity:0, transform:'translateY(18px)' }, { opacity:1, transform:'none' }], { duration:520, delay:120, easing:'cubic-bezier(.2,.8,.2,1)', fill:'backwards' });
+  sh.animate([{ clipPath:`inset(${ins.map(v => v.toFixed(0)+'px').join(' ')} round 22px)`, opacity:.55 }, { clipPath:'inset(0px 0px 0px 0px round 26px)', opacity:1 }], { duration:420, easing:'cubic-bezier(.32,.72,0,1)' });
+  const b = sh.querySelector('.sheet-body'); if (b && b.animate) b.animate([{ opacity:0, transform:'translateY(8px)' }, { opacity:1, transform:'none' }], { duration:320, delay:80, easing:'cubic-bezier(.23,1,.32,1)', fill:'backwards' });
 };
 
 /* ---------- apagar música com desfazer ---------- */
@@ -141,7 +141,7 @@ app.addEventListener('click', e => {
   if (b.dataset.popped) return; b.dataset.popped = '1';
   const [id, list, i] = b.dataset.tcheck.split(':');
   b.classList.add('checking'); const row = b.closest('.sw, .check-row'); row && row.classList.add('leaving');
-  setTimeout(() => uxToggle(id, list, +i, list==='homework' ? 'Lição feita' : 'Dúvida respondida'), reduceMotion() ? 0 : 520);
+  setTimeout(() => uxToggle(id, list, +i, list==='homework' ? 'Lição feita' : 'Dúvida respondida'), reduceMotion() ? 0 : 420);
 }, true);
 
 /* ---------- deslizar (lição feita, pagamento recebido, cobrar) ---------- */
@@ -150,7 +150,7 @@ document.addEventListener('pointerdown', e => {
   if (e.button > 0) return; const el = e.target.closest('[data-swipe]'); if (!el) return;
   if (e.target.closest('input,textarea,select')) return;
   const fg = el.querySelector(':scope > .sw-fg'); if (!fg) return;
-  sw = { el, fg, x0: e.clientX, y0: e.clientY, dx: 0, state: 'pending', id: e.pointerId, w: el.offsetWidth };
+  sw = { el, fg, bg: el.querySelector(':scope > .sw-bg'), x0: e.clientX, y0: e.clientY, dx: 0, state: 'pending', id: e.pointerId, w: el.offsetWidth, t0: performance.now() };
 });
 document.addEventListener('pointermove', e => {
   if (!sw || e.pointerId !== sw.id) return;
@@ -165,14 +165,16 @@ document.addEventListener('pointermove', e => {
   const lim = sw.w * .42; if (Math.abs(x) > lim) x = Math.sign(x) * (lim + (Math.abs(x) - lim) / 3);
   sw.dx = x; sw.fg.style.transform = `translateX(${x}px)`;
   const p = Math.min(1, Math.abs(x) / Math.min(120, sw.w * .3));
-  sw.el.style.setProperty('--swp', p.toFixed(2)); sw.el.dataset.dir = x > 0 ? 'r' : 'l';
+  sw.el.dataset.dir = x > 0 ? 'r' : 'l'; if (sw.bg){ sw.bg.style.opacity = (.35 + p * .65).toFixed(2); sw.bg.querySelectorAll('span').forEach(s => { s.style.transform = `scale(${(.88 + p * .12).toFixed(3)})`; }); }
   if (p >= 1 && !sw.armed){ sw.armed = true; hap('tick'); sw.el.classList.add('armed'); } else if (p < 1 && sw.armed){ sw.armed = false; sw.el.classList.remove('armed'); }
 }, { passive: true });
 function swEnd(e){
   if (!sw || (e && e.pointerId !== sw.id)) return; const s = sw; sw = null; if (s.state !== 'drag') return;
   swSuppress = Date.now();
-  const dir = s.dx > 0 ? 'r' : 'l', ok = s.armed && (dir === 'r' ? s.el.dataset.swipeR : s.el.dataset.swipeL);
-  s.fg.style.transition = 'transform .32s cubic-bezier(.2,.8,.2,1)';
+  const dir = s.dx > 0 ? 'r' : 'l', v = Math.abs(s.dx) / Math.max(1, performance.now() - s.t0), fling = v > .55 && Math.abs(s.dx) > 40;
+  const ok = (s.armed || fling) && (dir === 'r' ? s.el.dataset.swipeR : s.el.dataset.swipeL);
+  if (s.bg) setTimeout(() => { s.bg.style.opacity = ''; s.bg.querySelectorAll('span').forEach(x => { x.style.transform = ''; }); }, 340);
+  s.fg.style.transition = 'transform .26s cubic-bezier(.23,1,.32,1)';
   if (ok){
     s.fg.style.transform = `translateX(${dir === 'r' ? s.w : -s.w}px)`;
     setTimeout(() => { s.el.dispatchEvent(new CustomEvent('fluid-swipe', { bubbles: true, detail: { dir } })); lsSet('fluid.swiped', 1); }, 230);
@@ -278,7 +280,7 @@ function fabOpen(){
   if (document.getElementById('ux-fab')) return fabClose();
   const items = fabItems(); hap('tab'); uiSound('tap');
   const el = document.createElement('div'); el.id = 'ux-fab'; el.className = 'ux-layer';
-  el.innerHTML = `<div class="ux-scrim fab-scrim" data-ux-close></div><div class="fab-menu" role="menu" aria-label="Criar">${items.map((it, i) => `<button class="fab-it" role="menuitem" data-i="${i}" data-k="${it[0]}" style="--c:${it[2]};--d:${(items.length-1-i)*34}ms"><span class="fab-lb">${it[1]}</span><span class="fab-ic">${UXI[it[0]]}</span></button>`).join('')}</div>`;
+  el.innerHTML = `<div class="ux-scrim fab-scrim" data-ux-close></div><div class="fab-menu" role="menu" aria-label="Criar">${items.map((it, i) => `<button class="fab-it" role="menuitem" data-i="${i}" data-k="${it[0]}" style="--c:${it[2]};--d:${(items.length-1-i)*22}ms"><span class="fab-lb">${it[1]}</span><span class="fab-ic">${UXI[it[0]]}</span></button>`).join('')}</div>`;
   document.body.appendChild(el); document.body.classList.add('fab-on');
   el.addEventListener('click', e => { if (e.target.closest('[data-ux-close]')) return fabClose(); const b = e.target.closest('.fab-it'); if (!b) return; fabRun(items, +b.dataset.i); });
   setTimeout(() => { const f = el.querySelector('.fab-it:last-child'); f && f.focus({ preventScroll:true }); }, 50);
@@ -308,21 +310,23 @@ function dockSync(){
     document.body.appendChild(dockEl);
     dockEl.addEventListener('click', e => { const b = e.target.closest('[data-dock]'); if (!b) return; const k = b.dataset.dock;
       if (k === '+') return fabOpen();
-      bump(b); fabClose();
+      fabClose();
       if (k === 'painel'){ hap('tab'); const lv = liveLesson(); return lv ? window.FluidHub.openStudent(lv.id) : window.FluidHub.open(); }
       if (k === view.tab){ window.scrollTo({ top:0, behavior: reduceMotion() ? 'auto' : 'smooth' }); return; }
       goTab(k); });
     plusHold(dockEl.querySelector('.dock-plus'));
   }
   dockEl.querySelectorAll('[data-dock]').forEach(b => { const on = b.dataset.dock === view.tab; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
-  const setB = (k, n, cls) => { const b = dockEl.querySelector(`[data-dock="${k}"] .dock-badge`); if (!b) return; b.hidden = !n; b.textContent = n === true ? '' : n > 9 ? '9+' : String(n||''); b.className = 'dock-badge ' + (cls||'') + (n === true ? ' dot' : ''); };
+  const LBL = { hoje:'Hoje', musicas:'Músicas', treino:'Treinar', aulas:'Aulas', painel:'Painel' };
+  const setB = (k, n, cls, what) => { const btn = dockEl.querySelector(`[data-dock="${k}"]`), b = btn && btn.querySelector('.dock-badge'); if (!b) return; b.hidden = !n; b.textContent = n === true ? '' : n > 9 ? '9+' : String(n||''); b.className = 'dock-badge ' + (cls||'') + (n === true ? ' dot' : ''); b.setAttribute('aria-hidden','true');
+    btn.setAttribute('aria-label', LBL[k] + (n === true ? ', ' + (what || 'novidades') : n ? ', ' + n + ' ' + (what || 'pendentes') : '')); };
   const news = window.FLUID_NEWS || {};
-  setB('aulas', pendingCount() || (news.lessons && view.tab !== 'aulas' ? true : 0));
-  setB('musicas', news.songs && view.tab !== 'musicas' ? true : 0, 'glow');
+  setB('aulas', pendingCount() || (news.lessons && view.tab !== 'aulas' ? true : 0), '', pendingCount() ? (pendingCount() === 1 ? 'lição pendente' : 'lições pendentes') : 'aula nova');
+  setB('musicas', news.songs && view.tab !== 'musicas' ? true : 0, 'glow', 'música nova do professor');
   const pb = dockEl.querySelector('[data-dock="aulas"]'); pb && pb.classList.toggle('pulse', lessonDay());
   const pn = dockEl.querySelector('[data-dock="painel"]');
   if (pn){ pn.classList.toggle('live', !!live); pn.querySelector('small').textContent = live ? 'Aula agora' : 'Painel'; pn.setAttribute('aria-label', live ? 'Aula agora com ' + live.name : 'Painel');
-    const hb = window.FLUID_HUB_BADGE || {}; setB('painel', live ? 0 : (hb.late || hb.soon), hb.late ? '' : 'warn'); }
+    const hb = window.FLUID_HUB_BADGE || {}; setB('painel', live ? 0 : (hb.late || hb.soon), hb.late ? '' : 'warn', hb.late ? 'mensalidades atrasadas' : 'mensalidades vencendo'); if (live) pn.setAttribute('aria-label', 'Aula agora com ' + live.name); }
   requestAnimationFrame(movePill);
 }
 function movePill(){
@@ -363,18 +367,20 @@ function goTab(k){
   if (document.startViewTransition && !reduceMotion()){
     const order = ['hoje','musicas','treino','aulas'], dir = order.indexOf(k) > order.indexOf(view.tab) ? 'fwd' : 'back';
     document.documentElement.dataset.vt = dir; const t = document.startViewTransition(go); t.finished.finally(() => { delete document.documentElement.dataset.vt; });
-  } else go();
+  } else { go(); bootIn(); }
 }
+function bootIn(){ if (reduceMotion()) return; app.classList.remove('boot'); void app.offsetWidth; app.classList.add('boot'); clearTimeout(bootIn.t); bootIn.t = setTimeout(() => app.classList.remove('boot'), 1100); }
 
 /* ---------- busca universal ---------- */
 const nrm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-function openSearch(){
+function openSearch(viaKey){
   if (document.getElementById('ux-search')) return;
   fabClose();
   const el = document.createElement('div'); el.id = 'ux-search'; el.className = 'ux-layer';
   el.innerHTML = `<div class="ux-scrim" data-ux-close></div><div class="srch" role="dialog" aria-modal="true" aria-label="Buscar no Fluid">
     <label class="srch-bar">${I.search}<input id="sr-q" type="search" placeholder="Música, acorde, aula${window.FluidHub && window.FluidWeb ? ', aluno' : ''} ou o que fazer" autocomplete="off" enterkeyhint="go" aria-controls="sr-list"><button class="srch-x" data-ux-close aria-label="Fechar">Esc</button></label>
     <div class="srch-list" id="sr-list" role="listbox"></div></div>`;
+  if (viaKey === true) el.classList.add('kbd');
   document.body.appendChild(el); document.body.classList.add('sr-on');
   const q = el.querySelector('#sr-q'); let items = [], sel = 0;
   const draw = () => {
@@ -527,6 +533,7 @@ const _render = render;
 render = function(){
   if (view.tab === 'hoje'){ cancelAnimationFrame(orbitRAF); renderHoje(); } else _render();
   app.dataset.tab = view.tab;
+  if (!render.booted && mode !== 'loading'){ render.booted = true; bootIn(); }
   const nw = window.FLUID_NEWS; if (nw){ if (view.tab === 'musicas') nw.songs = 0; if (view.tab === 'aulas') nw.lessons = 0; }
   try { dockSync(); } catch(e){}
   try { miniSync(); } catch(e){}
@@ -596,11 +603,11 @@ document.addEventListener('pointerup', dgEnd); document.addEventListener('pointe
 window.addEventListener('keydown', e => {
   const typing = ['INPUT','TEXTAREA','SELECT'].includes((document.activeElement||{}).tagName);
   if (e.key === 'Escape'){
-    if (document.getElementById('ux-search')){ e.stopImmediatePropagation(); e.preventDefault(); return closeSearch(); }
+    if (document.getElementById('ux-search')){ e.stopImmediatePropagation(); e.preventDefault(); return closeSearch(true); }
     if (document.getElementById('ux-fab')){ e.stopImmediatePropagation(); return fabClose(); }
     if (document.getElementById('ux-sheet')){ e.stopImmediatePropagation(); return uxSheetClose(); }
   }
-  if (((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing && !view.sheet && !practice && !trainer)){ e.preventDefault(); openSearch(); }
+  if (((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing && !view.sheet && !practice && !trainer)){ e.preventDefault(); openSearch(true); }
 }, true);
 
 /* ================= NAVEGAÇÃO VIVA ================= */
@@ -675,7 +682,7 @@ app.addEventListener('touchstart', e => {
   if (e.touches.length !== 1 || layerOpen()) return; const t = e.target;
   if (t.closest('[data-swipe],input,textarea,select,[contenteditable],.orbit,.metro input') || hScroll(t)) return;
   const x = e.touches[0].clientX; if (x < 18 || x > innerWidth - 18) return; // bordas: gesto do sistema
-  tsw = { x0: x, y0: e.touches[0].clientY, dx: 0, on: false };
+  tsw = { x0: x, y0: e.touches[0].clientY, dx: 0, on: false, t0: performance.now() };
 }, { passive: true });
 app.addEventListener('touchmove', e => {
   if (!tsw) return; const dx = e.touches[0].clientX - tsw.x0, dy = e.touches[0].clientY - tsw.y0;
@@ -689,8 +696,9 @@ function tswEnd(){
   if (!tsw) return; const s = tsw; tsw = null; if (!s.on) return; swSuppress = Date.now(); edgeHint(null);
   const i = TABS.indexOf(view.tab), nb = TABS[i + (s.dx < 0 ? 1 : -1)];
   const reset = () => { app.style.transition = ''; app.style.transform = ''; app.style.opacity = ''; };
-  if (nb && Math.abs(s.dx) > 80){ reset(); goTab(nb); }
-  else { app.style.transition = 'transform .35s cubic-bezier(.2,.9,.3,1.2), opacity .3s'; app.style.transform = ''; app.style.opacity = ''; setTimeout(reset, 360); }
+  const v = Math.abs(s.dx) / Math.max(1, performance.now() - s.t0);
+  if (nb && (Math.abs(s.dx) > 80 || (Math.abs(s.dx) > 36 && v > .5))){ reset(); goTab(nb); }
+  else { app.style.transition = 'transform .28s cubic-bezier(.23,1,.32,1), opacity .2s'; app.style.transform = ''; app.style.opacity = ''; setTimeout(reset, 300); }
 }
 app.addEventListener('touchend', tswEnd); app.addEventListener('touchcancel', tswEnd);
 let hintEl = null;
@@ -698,7 +706,7 @@ function edgeHint(tab, side, p){
   if (!tab){ if (hintEl){ hintEl.remove(); hintEl = null; } return; }
   if (!hintEl){ hintEl = document.createElement('div'); hintEl.className = 'edge-hint'; document.body.appendChild(hintEl); }
   const names = { hoje:'Hoje', musicas:'Músicas', treino:'Treinar', aulas:'Aulas' }, ic = { hoje:'home', musicas:'music', treino:'train', aulas:'book' };
-  hintEl.className = 'edge-hint ' + side + (p >= 1 ? ' ready' : ''); hintEl.style.setProperty('--p', p.toFixed(2));
+  hintEl.className = 'edge-hint ' + side + (p >= 1 ? ' ready' : ''); hintEl.style.opacity = p.toFixed(2); hintEl.style.transform = `translateY(-50%) scale(${(.9 + p * .1).toFixed(3)})`;
   const html = `${UXI[ic[tab]]}<span>${names[tab]}</span>`; if (hintEl.dataset.t !== tab){ hintEl.dataset.t = tab; hintEl.innerHTML = html; }
   if (p >= 1 && !hintEl.dataset.r){ hintEl.dataset.r = '1'; hap('tick'); } if (p < 1) delete hintEl.dataset.r;
 }
@@ -710,7 +718,7 @@ layer.addEventListener('touchstart', e => {
   if (view.sheet !== 'song' || e.touches.length !== 1 || trainer || pop.chord) return;
   const t = e.target; if (!t.closest('.sheet-body') || t.closest('input,textarea,select,[data-swipe],.rb,.fb,.lyrics') || hScroll(t)) return;
   const x = e.touches[0].clientX; if (x < 18 || x > innerWidth - 18) return;
-  ssw = { x0: x, y0: e.touches[0].clientY, dx: 0, on: false };
+  ssw = { x0: x, y0: e.touches[0].clientY, dx: 0, on: false, t0: performance.now() };
 }, { passive: true });
 layer.addEventListener('touchmove', e => {
   if (!ssw) return; const dx = e.touches[0].clientX - ssw.x0, dy = e.touches[0].clientY - ssw.y0;
@@ -723,19 +731,33 @@ layer.addEventListener('touchmove', e => {
 function sswEnd(){
   if (!ssw) return; const s = ssw; ssw = null; if (!s.on) return; swSuppress = Date.now(); peek(null);
   const b = layer.querySelector('.sheet-body'); if (!b) return;
-  if (s.nid && Math.abs(s.dx) > 80){
-    const dir = s.dx < 0 ? 1 : -1; b.style.transition = 'transform .16s ease-in, opacity .16s'; b.style.transform = `translateX(${-dir * 60}%)`; b.style.opacity = '0'; hap('swipe');
-    setTimeout(() => { pushRecent(s.nid); view.song = s.nid; view.confirmDel = false; refreshSheet(); uiSound('open');
-      const nb = layer.querySelector('.sheet-body'); if (nb && nb.animate && !reduceMotion()) nb.animate([{ transform:`translateX(${dir * 40}%)`, opacity:0 }, { transform:'none', opacity:1 }], { duration:340, easing:'cubic-bezier(.2,.85,.2,1)' });
-      const h = layer.querySelector('.sheet-head h2'); if (h && h.animate && !reduceMotion()) h.animate([{ opacity:0, transform:`translateX(${dir*16}px)` }, { opacity:1, transform:'none' }], { duration:300 }); }, 150);
-  } else { b.style.transition = 'transform .35s cubic-bezier(.2,.9,.3,1.2), opacity .3s'; b.style.transform = ''; b.style.opacity = ''; setTimeout(() => { b.style.transition = ''; }, 360); }
+  const v = Math.abs(s.dx) / Math.max(1, performance.now() - s.t0);
+  if (s.nid && (Math.abs(s.dx) > 80 || (Math.abs(s.dx) > 36 && v > .5))) songGo(s.nid, s.dx < 0 ? 1 : -1);
+  else { b.style.transition = 'transform .28s cubic-bezier(.23,1,.32,1), opacity .2s'; b.style.transform = ''; b.style.opacity = ''; setTimeout(() => { b.style.transition = ''; }, 300); }
 }
+function songGo(nid, dir){
+  const b = layer.querySelector('.sheet-body'); if (!b) return; const rm = reduceMotion(); hap('swipe');
+  if (!rm){ b.style.transition = 'transform .14s cubic-bezier(.4,0,1,1), opacity .14s'; b.style.transform = `translateX(${-dir * 24}%)`; b.style.opacity = '0'; }
+  setTimeout(() => { pushRecent(nid); view.song = nid; view.confirmDel = false; refreshSheet(); uiSound('open');
+    const nb = layer.querySelector('.sheet-body'); if (nb && nb.animate && !rm) nb.animate([{ transform:`translateX(${dir * 16}%)`, opacity:0 }, { transform:'none', opacity:1 }], { duration:260, easing:'cubic-bezier(.23,1,.32,1)' }); }, rm ? 0 : 140);
+}
+/* botões visíveis de anterior / próxima (alternativa ao gesto) */
+const _refreshSheet = refreshSheet;
+refreshSheet = function(){
+  _refreshSheet();
+  if (view.sheet !== 'song') return; const body = layer.querySelector('.sheet-body'); if (!body || body.querySelector('.sh-nav')) return;
+  const ord = songOrder(), i = ord.indexOf(view.song), prev = songs.find(s => s.id === ord[i-1]), next = songs.find(s => s.id === ord[i+1]); if (!prev && !next) return;
+  const nav = document.createElement('nav'); nav.className = 'sh-nav'; nav.setAttribute('aria-label', 'Outras músicas');
+  nav.innerHTML = `${prev ? `<button class="sh-nb" data-go="${esc(prev.id)}" data-dir="-1"><span aria-hidden="true">${I.back}</span><span><small>Anterior</small><b>${esc(prev.title || 'Sem título')}</b></span></button>` : '<span></span>'}${next ? `<button class="sh-nb nx" data-go="${esc(next.id)}" data-dir="1"><span><small>Próxima</small><b>${esc(next.title || 'Sem título')}</b></span><span aria-hidden="true">${I.chev}</span></button>` : ''}`;
+  body.appendChild(nav);
+  nav.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (!b) return; e.stopPropagation(); songGo(b.dataset.go, +b.dataset.dir); });
+};
 layer.addEventListener('touchend', sswEnd); layer.addEventListener('touchcancel', sswEnd);
 let peekEl = null;
 function peek(s, side, p){
   if (!s){ if (peekEl){ peekEl.remove(); peekEl = null; } return; }
   if (!peekEl){ peekEl = document.createElement('div'); document.body.appendChild(peekEl); }
-  peekEl.className = 'song-peek ' + side + (p >= 1 ? ' ready' : ''); peekEl.style.setProperty('--p', p.toFixed(2));
+  peekEl.className = 'song-peek ' + side + (p >= 1 ? ' ready' : ''); peekEl.style.opacity = p.toFixed(2); peekEl.style.transform = `translateY(-50%) scale(${(.92 + p * .08).toFixed(3)})`;
   if (peekEl.dataset.id !== s.id){ peekEl.dataset.id = s.id; peekEl.innerHTML = `<span class="dotc" style="background:${hueOf(s)}">${esc(initials(s.title))}</span><span><small>${side === 'r' ? 'Próxima' : 'Anterior'}</small><b>${esc(s.title || 'Sem título')}</b></span>`; }
   if (p >= 1 && !peekEl.dataset.r){ peekEl.dataset.r = '1'; hap('tick'); } if (p < 1) delete peekEl.dataset.r;
 }
@@ -755,7 +777,7 @@ document.addEventListener('touchmove', e => {
   if (!ptrEl){ ptrEl = document.createElement('div'); ptrEl.className = 'ptr'; ptrEl.innerHTML = `<span class="ptr-ic"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="ptrG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#1FC8A8"/><stop offset=".5" stop-color="#9A5BE6"/><stop offset="1" stop-color="#E5245E"/></linearGradient></defs><path d="M40.6 27H67.2Q70.6 27 70.6 30.4V34.4Q70.6 39.6 65.4 39.6H33.2Q30.6 39.6 32.2 37.6L38.4 28.6Q39.3 27 40.6 27Z" fill="url(#ptrG)"/><path d="M50.2 45.6H61.2Q64.6 45.6 64.6 49V53.6Q64.6 57.2 61 57.2H50.6Q48.4 57.2 47 59L40.6 67Q38.8 69.2 36 69.2H34Q31 69.2 31 66.4V61Q31 58.2 34 58.2H36.4Q38.6 58.2 39.8 56.7L46.8 47.4Q48.1 45.6 50.2 45.6Z" fill="url(#ptrG)"/></svg></span><small>Puxe para atualizar</small>`; document.body.appendChild(ptrEl); }
   const ready = pull >= 70; ptrEl.classList.toggle('ready', ready); ptrEl.querySelector('small').textContent = ready ? 'Solte para atualizar' : 'Puxe para atualizar';
   if (ready && !ptr.r){ ptr.r = true; hap('tick'); } if (!ready) ptr.r = false;
-  ptrEl.style.setProperty('--y', pull + 'px'); ptrEl.style.setProperty('--r', (pull * 3.2) + 'deg'); ptrEl.style.opacity = String(Math.min(1, pull / 40));
+  ptrEl.style.transform = `translateY(${pull}px)`; ptrEl.querySelector('svg').style.transform = `rotate(${(pull * 3.2).toFixed(0)}deg)`; ptrEl.style.opacity = String(Math.min(1, pull / 40));
   app.style.transition = 'none'; app.style.transform = `translateY(${pull * .6}px)`;
 }, { passive: true });
 function ptrReset(){ ptr = null; app.style.transition = 'transform .35s cubic-bezier(.2,.9,.3,1.2)'; app.style.transform = ''; setTimeout(() => { app.style.transition = ''; }, 360);
@@ -763,7 +785,7 @@ function ptrReset(){ ptr = null; app.style.transition = 'transform .35s cubic-be
 document.addEventListener('touchend', async () => {
   if (!ptr) return; const go = ptr.on && ptr.dy >= 70; if (ptr.on) swSuppress = Date.now();
   if (!go) return ptrReset();
-  refreshing = true; ptr = null; ptrEl.classList.add('spin'); ptrEl.querySelector('small').textContent = 'Atualizando…'; ptrEl.style.setProperty('--y', '60px');
+  refreshing = true; ptr = null; ptrEl.classList.add('spin'); ptrEl.querySelector('small').textContent = 'Atualizando…'; ptrEl.style.transform = 'translateY(60px)'; ptrEl.querySelector('svg').style.transform = '';
   app.style.transition = 'transform .3s'; app.style.transform = 'translateY(40px)'; hap('refresh');
   const t0 = Date.now();
   try { await Promise.all([db && db.refresh ? db.refresh() : null, window.FluidHub && window.FluidHub.refresh ? window.FluidHub.refresh() : null]); } catch(e){}

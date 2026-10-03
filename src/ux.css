@@ -426,4 +426,117 @@ body.mb-on .wrap{padding-bottom:calc(220px + env(safe-area-inset-bottom,0px))}
 .ptr.ready .ptr-ic{box-shadow:0 0 0 3px color-mix(in srgb,#8B5CF6 40%,transparent),0 10px 26px -8px rgba(139,92,246,.6)}
 .ptr.spin .ptr-ic svg{animation:spin .8s linear infinite}
 .ptr small{font-size:11.5px;font-weight:600;color:var(--muted);padding:3px 10px;border-radius:999px;background:var(--sheetBg)}
+
+/* ================= REVISÃO (ui-ux-pro-max + design-motion-principles) ================= */
+/* tokens de movimento: uma família de curvas, durações por distância */
+:root{--e-out:cubic-bezier(.23,1,.32,1);--e-ios:cubic-bezier(.32,.72,0,1);--e-in:cubic-bezier(.4,0,1,1);--t-press:120ms;--t-fast:160ms;--t-base:240ms;--t-sheet:420ms}
+/* contraste: texto fraco no claro passa de 3,4:1 para 5,1:1 */
+:root{--faint:#5E6479}
+/* entradas: só na primeira abertura e na troca de aba, nunca a cada atualização da tela */
+.card,.lesson-card,.hj-card,.hj-pract,.hj-metro,.hj-greet,.hj-search,.tab-title,.ux-act,.sr-it,.hj-ch{animation:none}
+#app.boot .hj-greet,#app.boot .hj-search,#app.boot .hj-card,#app.boot .hj-pract,#app.boot .hj-metro{animation:enterUp 380ms var(--e-out) backwards;animation-delay:calc(var(--d,0) * 40ms)}
+#app.boot .card,#app.boot .lesson-card,#app.boot .panel,#app.boot .orbit,#app.boot .tab-title{animation:enterUp 320ms var(--e-out) backwards}
+@keyframes enterUp{from{opacity:0;transform:translateY(8px)}}
+.hj-ring .rg-prog{animation:none}
+#app.boot .hj-ring .rg-prog{animation:ringIn 900ms var(--e-out) .15s backwards}
+/* fim dos pulsos infinitos em indicadores */
+.hj-play::after,.dock-b.live .dock-ic::after,.pr-ring.full::after{display:none}
+.hj-hero::before,.hj-lead>svg:first-child,.metro-play.on,.minibar.playing .mb-art.mt,.core::after{animation:none}
+.hj-greet h1{animation:none;background:none;-webkit-background-clip:border-box;background-clip:border-box;color:var(--text)}
+.dock-badge.glow{animation:none;box-shadow:0 0 0 2px var(--bg)}
+.dock-b.pulse .dock-ic::before{content:"";position:absolute;inset:auto;top:-2px;left:-6px;width:7px;height:7px;border:0;border-radius:50%;background:#F97316;opacity:1;animation:none;box-shadow:0 0 0 2px var(--bg)}
+.pr-ring.full .rg-prog{animation:glowP 1.2s ease-in-out 2}
+.pr-streak.lit .flame svg{animation-iteration-count:2}
+.il-float,.il-n1,.il-n2,.il-spark path,.il-pen{animation-iteration-count:2}
+/* barra: sem mola elástica, rótulo sempre visível */
+.dock-pill{transition:transform 300ms var(--e-ios),width 300ms var(--e-ios),opacity .2s}
+.dock-in{animation:dockEnter 360ms var(--e-out) backwards;transition:transform 280ms var(--e-ios),opacity 200ms}
+@keyframes dockEnter{from{opacity:0;transform:translateY(16px)}}
+.dock-b.on::after{display:none}
+.dock-b.on small{opacity:1;color:var(--accentInk);font-weight:700}
+.dock-ic svg{transition:transform var(--t-press) var(--e-out)}
+.dock-b.on .dock-ic svg{transform:translateY(-1px)}
+.dock-b:active{transform:none}.dock-b:active .dock-ic svg{transform:scale(.88)}
+.dock-b.bump .dock-ic svg{animation:none}
+.dock-plus{transition:transform var(--t-press) var(--e-out)}
+.dock-plus svg{transition:transform 220ms var(--e-out)}
+.dock-plus:active{transform:scale(.94)}
+.dock-b.live small{color:#BE123C}
+:root[data-theme="dark"] .dock-b.live small{color:#FB7185}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dock-b.live small{color:#FB7185}}
+/* menu do +: nasce do botão, sem pular de scale(.6) */
+.fab-it{animation:fabEnter 240ms var(--e-out) backwards;animation-delay:var(--d)}
+@keyframes fabEnter{from{opacity:0;transform:translateY(10px) scale(.97)}}
+.ux-layer.out .fab-it{animation:fabLeave 140ms var(--e-in) both}
+@keyframes fabLeave{to{opacity:0;transform:translateY(6px)}}
+.fab-menu{transform-origin:bottom center}
+.fab-it:hover .fab-ic,.fab-it:focus-visible .fab-ic{transform:scale(1.04)}
+.fab-it.hot .fab-ic{transform:scale(1.06)}
+.fab-ic{transition:transform var(--t-fast) var(--e-out)}
+/* folhas: curva do iOS, saída mais curta que a entrada */
+.ux-sheet{animation:sheetUp var(--t-sheet) var(--e-ios) both}
+.ux-layer.out .ux-sheet{animation:sheetDown 200ms var(--e-in) both}
+.ux-scrim{animation:fadeIn 240ms ease-out both}
+.ux-layer.out .ux-scrim{animation:fadeOut 180ms ease-in both}
+@media (max-width:640px){.sheet{animation:sheetUp var(--t-sheet) var(--e-ios) both}}
+.ux-tog i::after{transition:transform 200ms var(--e-out)}
+.ux-tog i{transition:background 200ms ease}
+/* busca: aberta pelo teclado não anima */
+.srch{animation:srEnter 220ms var(--e-out) both}
+@keyframes srEnter{from{opacity:0;transform:translateY(-8px) scale(.99)}}
+.ux-layer.kbd .srch,.ux-layer.kbd .ux-scrim{animation:none}
+.ux-layer.out .srch{animation:srOut 140ms var(--e-in) both}
+/* minibarra e treino */
+.minibar{animation:mbEnter 280ms var(--e-out) both}
+@keyframes mbEnter{from{opacity:0;transform:translateY(12px)}}
+.minibar.out{animation:mbLeave 180ms var(--e-in) both}
+@keyframes mbLeave{to{opacity:0;transform:translateY(8px)}}
+.pr-now.swap{animation:chordIn 260ms var(--e-out) both}
+@keyframes chordIn{from{opacity:.35;transform:translateX(16px)}}
+/* concluir lição: confirmação curta, sem animar altura (propriedade de layout) */
+.check.checking{animation:checkOk 320ms var(--e-out),checkRing 520ms ease-out}
+@keyframes checkOk{0%{transform:scale(.9)}55%{transform:scale(1.1)}100%{transform:none}}
+@keyframes checkRing{from{box-shadow:0 0 0 0 rgba(34,197,94,.55)}to{box-shadow:0 0 0 10px rgba(34,197,94,0)}}
+.check.checking::before{animation:checkDraw 220ms 60ms var(--e-out) both}
+.check.checking::after{display:none}
+.leaving{animation:leaveRow 240ms 180ms var(--e-in) both}
+@keyframes leaveRow{to{opacity:0;transform:translateX(24px)}}
+/* deslizar: cores com contraste para texto branco, sem variável CSS a cada quadro */
+.sw[data-dir="r"] .sw-bg{background:#15803D}
+.sw[data-dir="l"] .sw-bg{background:#0F766E}
+.sw-bg span{opacity:1;transform:scale(.88);transition:transform var(--t-fast) var(--e-out)}
+.sw.armed .sw-bg span{transform:scale(1)!important}
+.edge-hint,.song-peek{transition:background var(--t-fast),color var(--t-fast)}
+.ptr{transform:none}
+.ptr-ic svg{transition:none}
+/* transição entre abas: rápida, uso frequente */
+::view-transition-old(root){animation:vtOut 140ms var(--e-in) both}
+::view-transition-new(root){animation:vtIn 240ms var(--e-out) both}
+@keyframes vtOut{to{opacity:0;transform:translateX(-12px)}}
+@keyframes vtIn{from{opacity:0;transform:translateX(16px)}}
+@keyframes vtOutB{to{opacity:0;transform:translateX(12px)}}
+@keyframes vtInB{from{opacity:0;transform:translateX(-16px)}}
+/* toques: área mínima de 44px */
+.check{position:relative}
+.check::after{content:"";position:absolute;inset:-9px}
+.hw-rep-b{position:relative}.hw-rep-b::after{content:"";position:absolute;inset:-6px}
+.mb-btn{width:44px;height:44px}.mb-btn.ghost{width:44px}
+.hj-h .linkish{padding:12px 6px;margin:-12px -6px}
+@media (max-width:640px){.srch-x{min-height:44px;min-width:60px}}
+/* campos com 16px: o iPhone não dá zoom ao tocar */
+.inp,.srch-bar input{font-size:16px}
+/* navegação entre músicas com botões (alternativa ao gesto) */
+.sh-nav{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.sh-nb{display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 12px;border-radius:18px;border:1px solid var(--glassEdgeSoft);background:var(--glass);color:var(--text);text-align:left;min-width:0;transition:background var(--t-fast)}
+.sh-nb:hover{background:var(--glassHover)}
+.sh-nb:active{transform:scale(.98)}
+.sh-nb.nx{grid-column:2;justify-content:flex-end;text-align:right}
+.sh-nb span:not([aria-hidden]){display:flex;flex-direction:column;min-width:0}
+.sh-nb small{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.sh-nb b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-nb svg{width:18px;height:18px;color:var(--muted);flex-shrink:0}
+/* movimento reduzido também vale para a pílula, os gestos e a barra */
+@media (prefers-reduced-motion:reduce){.dock-pill,.dock-in,.minibar{transition:none!important}::view-transition-old(root),::view-transition-new(root){animation:none!important}}
+.calm ::view-transition-old(root),.calm ::view-transition-new(root){animation:none!important}
+body:has(.dock) .fx-acc{display:none}
 /* ================= FIM UX ================= */
