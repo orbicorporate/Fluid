@@ -981,13 +981,13 @@ body{background-attachment:fixed}
 
 /* ---------- barra de baixo ---------- */
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:16;display:flex;justify-content:center;padding:0 12px calc(10px + env(safe-area-inset-bottom,0px));pointer-events:none}
-.dock-in{pointer-events:auto;display:flex;align-items:center;gap:2px;padding:6px;border-radius:30px;background:var(--sheetBg);border:1px solid var(--glassEdgeSoft);border-top-color:var(--glassEdge);box-shadow:var(--glassHi),0 18px 50px -12px rgba(20,22,60,.35);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);animation:dockIn .6s cubic-bezier(.2,.9,.25,1.2) both}
+.dock-in{pointer-events:auto;display:flex;align-items:center;gap:2px;padding:6px;border-radius:30px;background:var(--sheetBg);border:1px solid var(--glassEdgeSoft);border-top-color:var(--glassEdge);box-shadow:var(--glassHi),0 18px 50px -12px rgba(20,22,60,.35);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);animation:dockIn .6s cubic-bezier(.2,.9,.25,1.2) backwards}
 .dock-b{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:64px;height:54px;border:0;border-radius:22px;background:transparent;color:var(--faint);font-size:10.5px;font-weight:600;letter-spacing:.01em;transition:color .25s,background .25s,transform .2s cubic-bezier(.2,.8,.2,1)}
-.dock-b small{font-size:10.5px;line-height:1}
+.dock-b small{font-size:10.5px;line-height:1;white-space:nowrap}
 .dock-ic{position:relative;display:flex}
 .dock-ic svg{width:23px;height:23px;transition:transform .35s cubic-bezier(.2,.9,.3,1.4)}
 .dock-b:active{transform:scale(.92)}
-.dock-b.on{color:var(--accentInk);background:var(--glowSoft)}
+.dock-b.on{color:var(--accentInk)}
 .dock-b.on .dock-ic svg{transform:translateY(-1px) scale(1.08)}
 .dock-b.on::after{content:"";position:absolute;bottom:3px;width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pop .35s cubic-bezier(.2,.8,.2,1) both}
 .dock-b.on small{opacity:0}
@@ -1305,6 +1305,101 @@ body.fab-on .dock{z-index:46}
 /* ---------- menos movimento ---------- */
 .calm *,.calm *::before,.calm *::after{animation-duration:.01s!important;animation-iteration-count:1!important;transition-duration:.01s!important}
 @media (prefers-reduced-motion:reduce){.hj-greet h1{animation:none}}
+
+
+/* ================= NAVEGAÇÃO VIVA ================= */
+html{overscroll-behavior-y:none}
+#app{touch-action:pan-y pinch-zoom}
+.sheet-body{touch-action:pan-y pinch-zoom}
+/* pílula que desliza entre as abas */
+.dock-in{position:relative}
+.dock-pill{position:absolute;left:0;top:6px;height:54px;width:64px;border-radius:22px;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 16%,transparent),color-mix(in srgb,var(--accent) 8%,transparent));border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px -8px var(--glow);transition:transform .55s cubic-bezier(.34,1.56,.64,1),width .4s cubic-bezier(.34,1.4,.64,1),opacity .2s;pointer-events:none}
+.dock-b,.dock-plus{position:relative;z-index:1}
+/* a barra some ao rolar */
+.dock-in{transition:transform .38s cubic-bezier(.2,.8,.2,1),opacity .3s}
+body.dock-hide .dock-in{transform:translateY(calc(100% + 24px));opacity:0}
+body.dock-hide .dock,body.dock-hide .dock-in{pointer-events:none}
+/* microanimação de cada ícone */
+.dock-b.bump .dock-ic svg{animation:var(--bumpA,bumpPop) .6s cubic-bezier(.2,.9,.3,1.3)}
+.dock-b[data-dock="hoje"]{--bumpA:bumpSun}.dock-b[data-dock="musicas"]{--bumpA:bumpJump}.dock-b[data-dock="treino"]{--bumpA:bumpSwing}.dock-b[data-dock="aulas"]{--bumpA:bumpFlip}.dock-b[data-dock="painel"]{--bumpA:bumpPop}
+@keyframes bumpSun{0%{transform:rotate(0) scale(1)}50%{transform:rotate(100deg) scale(1.25)}100%{transform:rotate(180deg) scale(1.08)}}
+@keyframes bumpJump{0%{transform:none}30%{transform:translateY(-8px) rotate(-10deg) scale(1.15)}60%{transform:translateY(0) scale(.95,1.05)}80%{transform:translateY(-2px)}100%{transform:translateY(-1px) scale(1.08)}}
+@keyframes bumpSwing{0%,100%{transform:rotate(0) scale(1.08)}20%{transform:rotate(-18deg) scale(1.15)}45%{transform:rotate(14deg)}70%{transform:rotate(-8deg)}85%{transform:rotate(4deg)}}
+@keyframes bumpFlip{0%{transform:perspective(80px) rotateY(0)}60%{transform:perspective(80px) rotateY(180deg) scale(1.15)}100%{transform:perspective(80px) rotateY(360deg) scale(1.08)}}
+@keyframes bumpPop{0%{transform:scale(1)}40%{transform:scale(1.3) rotate(8deg)}100%{transform:scale(1.08)}}
+/* sinais na barra */
+.dock-badge.dot{min-width:9px;width:9px;height:9px;padding:0;top:-2px;right:-4px}
+.dock-badge.glow{background:#8B5CF6;box-shadow:0 0 0 2px var(--bg),0 0 10px #8B5CF6;animation:glowDot 1.6s ease-in-out infinite}
+@keyframes glowDot{50%{box-shadow:0 0 0 2px var(--bg),0 0 18px 3px #8B5CF6}}
+.dock-b.pulse .dock-ic::before{content:"";position:absolute;inset:-8px;border-radius:50%;border:2px solid #F97316;opacity:0;animation:ping 2s cubic-bezier(.2,.8,.2,1) infinite}
+.dock-b.live{color:#fff}
+.dock-b.live .dock-ic{background:linear-gradient(135deg,#F43F7E,#8B5CF6);border-radius:10px;padding:3px;margin:-3px;box-shadow:0 6px 16px -4px rgba(244,63,126,.7)}
+.dock-b.live .dock-ic svg{width:19px;height:19px}
+.dock-b.live small{color:#E11D48;font-weight:700;font-size:9.5px;letter-spacing:-.01em}
+.dock-b.live .dock-ic::after{content:"";position:absolute;inset:-5px;border-radius:13px;border:2px solid #F43F7E;animation:ping 1.8s cubic-bezier(.2,.8,.2,1) infinite}
+/* + segurado */
+#ux-fab.held .fab-it .fab-lb{transition:transform .15s,background .15s}
+.fab-it.hot .fab-lb,.fab-it.last .fab-lb{background:color-mix(in srgb,var(--c) 18%,var(--sheetBg));border-color:var(--c)}
+.fab-it.hot .fab-ic{transform:scale(1.15) rotate(-6deg)}
+.fab-it.hot .fab-lb{transform:translateX(-6px)}
+.fab-it.last .fab-lb::after{content:"última";margin-left:8px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--c)}
+
+/* ---------- minibarra ---------- */
+.minibar{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:15;translate:-50% 0;width:min(440px,calc(100% - 24px));display:flex;align-items:center;gap:6px;padding:6px 6px 6px 6px;border-radius:22px;background:var(--sheetBg);border:1px solid var(--glassEdgeSoft);border-top-color:var(--glassEdge);box-shadow:var(--glassHi),0 14px 40px -12px rgba(20,22,60,.4);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);overflow:hidden;animation:mbIn .45s cubic-bezier(.2,.9,.3,1.2) both;transition:bottom .38s cubic-bezier(.2,.8,.2,1)}
+.minibar.out{animation:mbOut .25s ease-in both}
+@keyframes mbIn{from{opacity:0;transform:translateY(24px) scale(.95)}to{opacity:1;transform:none}}
+@keyframes mbOut{to{opacity:0;transform:translateY(20px) scale(.96)}}
+body.dock-hide .minibar{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+.mb-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:0;background:transparent;color:var(--text);text-align:left;padding:0}
+.mb-art{position:relative;width:44px;height:44px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(150deg,color-mix(in srgb,var(--c) 70%,#fff),var(--c));box-shadow:0 6px 16px -6px var(--c)}
+.mb-art svg{width:22px;height:22px}
+.mb-ch{font-family:var(--fDisplay);font-size:15px;font-weight:700;letter-spacing:-.02em}
+.mb-eq{position:absolute;right:4px;bottom:4px;display:flex;align-items:flex-end;gap:1.5px;height:9px}
+.mb-eq i{width:2px;height:3px;border-radius:1px;background:#fff;opacity:.85}
+.minibar.playing .mb-eq i{animation:eq .7s ease-in-out infinite}
+.mb-eq i:nth-child(2){animation-delay:.2s!important}.mb-eq i:nth-child(3){animation-delay:.4s!important}
+@keyframes eq{50%{height:9px}}
+.minibar.playing .mb-art.mt{animation:breathe 1s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.06)}}
+.mb-tx{display:flex;flex-direction:column;min-width:0}
+.mb-tx b{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mb-tx small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mb-dots{display:flex;gap:4px;margin-left:auto;padding-right:6px}
+.mb-dots i{width:7px;height:7px;border-radius:50%;background:var(--lineStrong);transition:transform .1s,background .1s}
+.mb-dots i.on{background:#14B8A6;transform:scale(1.4);box-shadow:0 0 8px #14B8A6}
+.mb-btn{width:42px;height:42px;border-radius:50%;flex-shrink:0;border:0;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--onAccent);box-shadow:0 6px 16px -6px var(--glow)}
+.mb-btn svg{width:18px;height:18px}
+.mb-btn.ghost{background:transparent;color:var(--muted);box-shadow:none;width:36px}
+.mb-btn:active{transform:scale(.9)}
+.mb-prog{position:absolute;left:0;bottom:0;height:2.5px;width:100%;background:var(--accent);transform-origin:left;transition:transform .4s cubic-bezier(.2,.8,.2,1)}
+.practice.mini{display:none}
+body.pr-mini #along{visibility:hidden}
+body.mb-on .toast{bottom:calc(160px + env(safe-area-inset-bottom,0px))}
+body.mb-on .wrap{padding-bottom:calc(220px + env(safe-area-inset-bottom,0px))}
+.mini-b svg{width:22px;height:22px}
+.sr-on .minibar{display:none}
+
+/* ---------- dicas de deslizar ---------- */
+.edge-hint{position:fixed;top:50%;z-index:14;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 10px;border-radius:20px;background:var(--sheetBg);border:1px solid var(--glassEdge);box-shadow:0 10px 30px -10px rgba(20,22,60,.35);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);color:var(--muted);font-size:11px;font-weight:700;opacity:var(--p);transform:translateY(-50%) scale(calc(.8 + var(--p) * .2));transition:color .2s,background .2s;pointer-events:none}
+.edge-hint.r{right:10px}.edge-hint.l{left:10px}
+.edge-hint svg{width:22px;height:22px}
+.edge-hint.ready{color:var(--onAccent);background:var(--accent);border-color:transparent}
+.song-peek{position:fixed;top:50%;z-index:30;display:flex;align-items:center;gap:10px;max-width:56vw;padding:8px 14px 8px 8px;border-radius:999px;background:var(--sheetBg);border:1px solid var(--glassEdge);box-shadow:0 14px 34px -10px rgba(20,22,60,.4);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);opacity:var(--p);transform:translateY(-50%) scale(calc(.85 + var(--p) * .15));pointer-events:none;transition:background .2s,color .2s}
+.song-peek.r{right:12px}.song-peek.l{left:12px;flex-direction:row-reverse;padding:8px 8px 8px 14px;text-align:right}
+.song-peek .dotc{width:36px;height:36px;font-size:11px}
+.song-peek span:last-child{display:flex;flex-direction:column;min-width:0}
+.song-peek small{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accentInk)}
+.song-peek b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song-peek.ready{background:var(--accent);color:var(--onAccent)}.song-peek.ready small{color:inherit;opacity:.85}
+
+/* ---------- puxar para atualizar ---------- */
+.ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) - 30px);z-index:14;translate:-50% 0;transform:translateY(var(--y,0));display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;transition:opacity .2s}
+.ptr.out{opacity:0!important;transition:opacity .25s}
+.ptr-ic{width:46px;height:46px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:var(--sheetBg);border:1px solid var(--glassEdge);box-shadow:0 10px 26px -8px rgba(20,22,60,.35);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.ptr-ic svg{width:40px;height:40px;transform:rotate(var(--r,0deg));transition:transform .05s}
+.ptr.ready .ptr-ic{box-shadow:0 0 0 3px color-mix(in srgb,#8B5CF6 40%,transparent),0 10px 26px -8px rgba(139,92,246,.6)}
+.ptr.spin .ptr-ic svg{animation:spin .8s linear infinite}
+.ptr small{font-size:11.5px;font-weight:600;color:var(--muted);padding:3px 10px;border-radius:999px;background:var(--sheetBg)}
 /* ================= FIM UX ================= */
 
 /* @@END-EXTRAS-CSS@@ */
@@ -3546,7 +3641,7 @@ function undoToast(msg, undo, ms){
   t.querySelector('.ut-msg').textContent = msg;
   document.body.appendChild(t);
   let done = false; const kill = () => { if (done) return; done = true; t.classList.add('out'); setTimeout(() => t.remove(), 260); };
-  const b = t.querySelector('.ut-btn'); if (b) b.onclick = () => { kill(); uiSound('undo'); buzz(8); try { undo(); } catch(e){} };
+  const b = t.querySelector('.ut-btn'); if (b) b.onclick = () => { kill(); uiSound('undo'); hap('undo'); try { undo(); } catch(e){} };
   setTimeout(kill, ms);
 }
 window.FLUID_UNDO = undoToast;
@@ -3613,7 +3708,7 @@ async function uxDeleteSong(id){
 
 /* ---------- marcar lição feita: check desenhado + desfazer ---------- */
 function uxToggle(lid, list, idx, label){
-  toggleItem(lid, list, idx); uiSound('done'); buzz(12);
+  toggleItem(lid, list, idx); uiSound('done'); hap('done');
   const l = lessons.find(x => x.id === lid), it = l && (l[list]||[])[idx];
   if (it && it.done){
     const left = pendingCount();
@@ -3652,7 +3747,7 @@ document.addEventListener('pointermove', e => {
   sw.dx = x; sw.fg.style.transform = `translateX(${x}px)`;
   const p = Math.min(1, Math.abs(x) / Math.min(120, sw.w * .3));
   sw.el.style.setProperty('--swp', p.toFixed(2)); sw.el.dataset.dir = x > 0 ? 'r' : 'l';
-  if (p >= 1 && !sw.armed){ sw.armed = true; buzz(8); sw.el.classList.add('armed'); } else if (p < 1 && sw.armed){ sw.armed = false; sw.el.classList.remove('armed'); }
+  if (p >= 1 && !sw.armed){ sw.armed = true; hap('tick'); sw.el.classList.add('armed'); } else if (p < 1 && sw.armed){ sw.armed = false; sw.el.classList.remove('armed'); }
 }, { passive: true });
 function swEnd(e){
   if (!sw || (e && e.pointerId !== sw.id)) return; const s = sw; sw = null; if (s.state !== 'drag') return;
@@ -3676,7 +3771,7 @@ document.addEventListener('fluid-swipe', e => {
 let lp = null;
 app.addEventListener('pointerdown', e => {
   const o = e.target.closest('[data-open]'); if (!o || e.button > 0) return;
-  lp = { o, x: e.clientX, y: e.clientY, t: setTimeout(() => { if (!lp) return; lp.fired = true; o.classList.add('pressed'); buzz(14); songActions(o.dataset.open); }, 480) };
+  lp = { o, x: e.clientX, y: e.clientY, t: setTimeout(() => { if (!lp) return; lp.fired = true; o.classList.add('pressed'); hap('hold'); songActions(o.dataset.open); }, 480) };
   o.classList.add('holding');
 });
 const lpCancel = () => { if (!lp) return; clearTimeout(lp.t); lp.o.classList.remove('holding'); const f = lp.fired; setTimeout(() => lp && lp.o && lp.o.classList.remove('pressed'), 200); if (f) swSuppress = Date.now(); lp = null; };
@@ -3762,40 +3857,89 @@ function fabItems(){
 }
 function fabOpen(){
   if (document.getElementById('ux-fab')) return fabClose();
-  const items = fabItems(); buzz(8); uiSound('tap');
+  const items = fabItems(); hap('tab'); uiSound('tap');
   const el = document.createElement('div'); el.id = 'ux-fab'; el.className = 'ux-layer';
-  el.innerHTML = `<div class="ux-scrim fab-scrim" data-ux-close></div><div class="fab-menu" role="menu" aria-label="Criar">${items.map((it, i) => `<button class="fab-it" role="menuitem" data-i="${i}" style="--c:${it[2]};--d:${(items.length-1-i)*34}ms"><span class="fab-lb">${it[1]}</span><span class="fab-ic">${UXI[it[0]]}</span></button>`).join('')}</div>`;
+  el.innerHTML = `<div class="ux-scrim fab-scrim" data-ux-close></div><div class="fab-menu" role="menu" aria-label="Criar">${items.map((it, i) => `<button class="fab-it" role="menuitem" data-i="${i}" data-k="${it[0]}" style="--c:${it[2]};--d:${(items.length-1-i)*34}ms"><span class="fab-lb">${it[1]}</span><span class="fab-ic">${UXI[it[0]]}</span></button>`).join('')}</div>`;
   document.body.appendChild(el); document.body.classList.add('fab-on');
-  el.addEventListener('click', e => { if (e.target.closest('[data-ux-close]')) return fabClose(); const b = e.target.closest('.fab-it'); if (!b) return; fabClose(); items[+b.dataset.i][3](); });
+  el.addEventListener('click', e => { if (e.target.closest('[data-ux-close]')) return fabClose(); const b = e.target.closest('.fab-it'); if (!b) return; fabRun(items, +b.dataset.i); });
   setTimeout(() => { const f = el.querySelector('.fab-it:last-child'); f && f.focus({ preventScroll:true }); }, 50);
 }
+function fabRun(items, i){ const it = items[i]; if (!it) return; fabClose(); lsSet('fluid.fab.last', it[0]); hap('tick'); it[3](); }
 function fabClose(){ const el = document.getElementById('ux-fab'); document.body.classList.remove('fab-on'); if (!el) return; el.classList.add('out'); setTimeout(() => el.remove(), 220); }
 
 /* ---------- barra de navegação de baixo ---------- */
 const DOCK = [['hoje','Hoje','home'],['musicas','Músicas','music'],['+','',''],['treino','Treinar','train'],['aulas','Aulas','book']];
 let dockEl = null;
+function liveLesson(){
+  const ti = window.FluidHub && window.FluidHub.todayInfo ? window.FluidHub.todayInfo() : null; if (!ti) return null;
+  const now = new Date(), m = now.getHours()*60 + now.getMinutes();
+  return ti.lessons.find(x => { if (!x.time || x.status === 'falta') return false; const [h, mm] = x.time.split(':').map(Number); const t = h*60 + (mm||0); return m >= t - 15 && m <= t + 60; }) || null;
+}
+function lessonDay(){ // aluno: o dia da semana em que as aulas costumam acontecer
+  if (!lessons.length || lessons.some(l => l.date === todayLocal())) return false;
+  const dow = new Date().getDay(); return lessons.slice(0, 8).filter(l => l.date && new Date(l.date + 'T12:00').getDay() === dow).length >= 2;
+}
 function dockSync(){
-  const hub = window.FluidHub && window.FluidWeb;
+  const hub = window.FluidHub && window.FluidWeb, live = hub ? liveLesson() : null;
   const items = hub ? [...DOCK, ['painel','Painel','panel']] : DOCK;
   if (!dockEl || dockEl.dataset.n !== String(items.length)){
     dockEl && dockEl.remove();
     dockEl = document.createElement('nav'); dockEl.className = 'dock'; dockEl.setAttribute('aria-label','Seções'); dockEl.dataset.n = String(items.length);
-    dockEl.innerHTML = `<div class="dock-in">${items.map(([k,l,ic]) => k==='+' ? `<button class="dock-plus" data-dock="+" aria-label="Criar: música, aula, dúvida">${UXI.plus}</button>` : `<button class="dock-b" data-dock="${k}" aria-label="${l}"><span class="dock-ic">${UXI[ic]}<em class="dock-badge" hidden></em></span><small>${l}</small></button>`).join('')}</div>`;
+    dockEl.innerHTML = `<div class="dock-in"><i class="dock-pill" aria-hidden="true"></i>${items.map(([k,l,ic]) => k==='+' ? `<button class="dock-plus" data-dock="+" aria-label="Criar: música, aula, dúvida. Segure para repetir a última">${UXI.plus}</button>` : `<button class="dock-b" data-dock="${k}" aria-label="${l}"><span class="dock-ic">${UXI[ic]}<em class="dock-badge" hidden></em></span><small>${l}</small></button>`).join('')}</div>`;
     document.body.appendChild(dockEl);
     dockEl.addEventListener('click', e => { const b = e.target.closest('[data-dock]'); if (!b) return; const k = b.dataset.dock;
       if (k === '+') return fabOpen();
-      fabClose();
-      if (k === 'painel') return window.FluidHub.open();
+      bump(b); fabClose();
+      if (k === 'painel'){ hap('tab'); const lv = liveLesson(); return lv ? window.FluidHub.openStudent(lv.id) : window.FluidHub.open(); }
       if (k === view.tab){ window.scrollTo({ top:0, behavior: reduceMotion() ? 'auto' : 'smooth' }); return; }
       goTab(k); });
+    plusHold(dockEl.querySelector('.dock-plus'));
   }
   dockEl.querySelectorAll('[data-dock]').forEach(b => { const on = b.dataset.dock === view.tab; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
-  const setB = (k, n, cls) => { const b = dockEl.querySelector(`[data-dock="${k}"] .dock-badge`); if (!b) return; b.hidden = !n; b.textContent = n > 9 ? '9+' : String(n||''); b.className = 'dock-badge ' + (cls||''); };
-  setB('aulas', pendingCount());
-  const hb = window.FLUID_HUB_BADGE || {}; setB('painel', hb.late || hb.soon, hb.late ? '' : 'warn');
+  const setB = (k, n, cls) => { const b = dockEl.querySelector(`[data-dock="${k}"] .dock-badge`); if (!b) return; b.hidden = !n; b.textContent = n === true ? '' : n > 9 ? '9+' : String(n||''); b.className = 'dock-badge ' + (cls||'') + (n === true ? ' dot' : ''); };
+  const news = window.FLUID_NEWS || {};
+  setB('aulas', pendingCount() || (news.lessons && view.tab !== 'aulas' ? true : 0));
+  setB('musicas', news.songs && view.tab !== 'musicas' ? true : 0, 'glow');
+  const pb = dockEl.querySelector('[data-dock="aulas"]'); pb && pb.classList.toggle('pulse', lessonDay());
+  const pn = dockEl.querySelector('[data-dock="painel"]');
+  if (pn){ pn.classList.toggle('live', !!live); pn.querySelector('small').textContent = live ? 'Aula agora' : 'Painel'; pn.setAttribute('aria-label', live ? 'Aula agora com ' + live.name : 'Painel');
+    const hb = window.FLUID_HUB_BADGE || {}; setB('painel', live ? 0 : (hb.late || hb.soon), hb.late ? '' : 'warn'); }
+  requestAnimationFrame(movePill);
 }
+function movePill(){
+  if (!dockEl) return; const pill = dockEl.querySelector('.dock-pill'), on = dockEl.querySelector('.dock-b.on'); if (!pill) return;
+  if (!on){ pill.style.opacity = '0'; return; }
+  const first = !pill.dataset.ready; if (first) pill.style.transition = 'none';
+  pill.style.opacity = '1'; pill.style.width = on.offsetWidth + 'px'; pill.style.transform = `translateX(${on.offsetLeft}px)`;
+  if (first){ pill.offsetWidth; pill.style.transition = ''; pill.dataset.ready = '1'; }
+}
+addEventListener('resize', () => requestAnimationFrame(movePill));
+setInterval(() => { try { dockSync(); } catch(e){} }, 60000);
+function bump(b){ if (reduceMotion()) return; b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); setTimeout(() => b.classList.remove('bump'), 700); }
+/* segurar o +: abre o menu; arrastar e soltar sobre uma opção executa; soltar no próprio + repete a última */
+function plusHold(btn){
+  let h = null;
+  btn.addEventListener('pointerdown', e => { if (e.button > 0) return; h = { x: e.clientX, y: e.clientY, id: e.pointerId, t: setTimeout(() => { if (!h) return; h.on = true; hap('hold'); if (!document.getElementById('ux-fab')) fabOpen(); const last = lsGet('fluid.fab.last', ''); const m = document.querySelector('#ux-fab'); m && m.classList.add('held'); const li = last && m && [...m.querySelectorAll('.fab-it')].find(x => x.dataset.k === last); li && li.classList.add('last'); try { btn.setPointerCapture(e.pointerId); } catch(err){} }, 380) }; });
+  btn.addEventListener('pointermove', e => { if (!h) return; if (!h.on){ if (Math.hypot(e.clientX - h.x, e.clientY - h.y) > 12){ clearTimeout(h.t); h = null; } return; }
+    const el = document.elementFromPoint(e.clientX, e.clientY), it = el && el.closest('.fab-it');
+    document.querySelectorAll('#ux-fab .fab-it').forEach(x => x.classList.toggle('hot', x === it)); if (it && it !== h.hot){ h.hot = it; hap('tick'); } if (!it) h.hot = null; });
+  const end = e => { if (!h) return; clearTimeout(h.t); const was = h; h = null; if (!was.on) return; swSuppress = Date.now();
+    const items = fabItems(), m = document.getElementById('ux-fab');
+    if (was.hot){ fabRun(items, +was.hot.dataset.i); return; }
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (el && el.closest('.dock-plus')){ const last = lsGet('fluid.fab.last', ''), i = items.findIndex(x => x[0] === last); if (i >= 0) return fabRun(items, i); }
+    m && m.classList.remove('held'); };
+  btn.addEventListener('pointerup', end); btn.addEventListener('pointercancel', () => { if (h) clearTimeout(h.t); h = null; });
+}
+/* ---------- vibração com "assinatura" por tipo de ação ---------- */
+const HAPT = { tab: 5, tick: 4, hold: 18, done: [12, 50, 20], undo: [8, 40, 8], swipe: [6, 30, 10], refresh: [10, 30, 10, 30, 14] };
+function hap(k){ if (ux.calm) return; buzz(HAPT[k] || 6); }
+/* ---------- cada aba lembra onde você estava ---------- */
+const scrollMem = {};
 function goTab(k){
-  const go = () => { setTab(k); render(); window.scrollTo(0, 0); };
+  if (k === view.tab) return;
+  scrollMem[view.tab] = window.scrollY; hap('tab');
+  const go = () => { setTab(k); render(); window.scrollTo(0, scrollMem[k] || 0); dockShow(); };
   uiSound('tap');
   if (document.startViewTransition && !reduceMotion()){
     const order = ['hoje','musicas','treino','aulas'], dir = order.indexOf(k) > order.indexOf(view.tab) ? 'fwd' : 'back';
@@ -3964,7 +4108,9 @@ const _render = render;
 render = function(){
   if (view.tab === 'hoje'){ cancelAnimationFrame(orbitRAF); renderHoje(); } else _render();
   app.dataset.tab = view.tab;
+  const nw = window.FLUID_NEWS; if (nw){ if (view.tab === 'musicas') nw.songs = 0; if (view.tab === 'aulas') nw.lessons = 0; }
   try { dockSync(); } catch(e){}
+  try { miniSync(); } catch(e){}
 };
 
 /* ---------- treino: modo palco e acorde que "voa" ---------- */
@@ -3982,14 +4128,18 @@ renderPractice = function(){
   _renderPractice(); const p = practice, el = document.getElementById('practice'); if (!p || !el) return;
   const head = el.querySelector('.pr-head');
   if (head && !head.querySelector('[data-stage]')){ const b = document.createElement('button'); b.className = 'btn stage-b' + (el.classList.contains('stage') ? ' on-guide' : ''); b.dataset.stage = '1'; b.innerHTML = UXI.stage + (el.classList.contains('stage') ? 'Sair do palco' : 'Modo palco'); b.setAttribute('aria-pressed', String(el.classList.contains('stage'))); b.title = 'Tela cheia, letra grande e tela sempre acesa'; head.appendChild(b); }
-  if (!el.dataset.uxBound){ el.dataset.uxBound = '1'; el.addEventListener('click', e => { if (e.target.closest('[data-stage]')){ e.stopPropagation(); stageToggle(); } }, true); }
+  if (head && !head.querySelector('[data-mini]')){ const m = document.createElement('button'); m.className = 'btn icon ghost mini-b'; m.dataset.mini = '1'; m.setAttribute('aria-label', 'Minimizar: continua tocando enquanto você navega'); m.title = 'Minimizar'; m.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'; head.insertBefore(m, head.children[1] || null); }
+  if (!el.dataset.uxBound){ el.dataset.uxBound = '1'; el.addEventListener('click', e => { if (e.target.closest('[data-stage]')){ e.stopPropagation(); stageToggle(); } if (e.target.closest('[data-mini]')){ e.stopPropagation(); practMini(true); } }, true); }
+  try { miniUpdate(); } catch(e){}
   const nm = (el.querySelector('.pr-name') || {}).textContent || '', now = performance.now();
   if (nm !== p._uxNm){ if (p._uxNm != null) p._uxAt = now; p._uxNm = nm; }
   const dt = now - (p._uxAt || -1e9), box = el.querySelector('.pr-now');
   if (box && dt < 520 && !reduceMotion()){ box.classList.add('swap'); box.style.animationDelay = (-dt).toFixed(0) + 'ms'; }
 };
 const _closePractice = closePractice;
-closePractice = function(){ const el = document.getElementById('practice'); if (el && el.classList.contains('stage')){ try { document.fullscreenElement && document.exitFullscreen(); } catch(e){} try { stageLock && stageLock.release(); } catch(e){} stageLock = null; } _closePractice(); };
+closePractice = function(){ if (practice) practice.mini = false; document.body.classList.remove('pr-mini'); const el = document.getElementById('practice'); if (el && el.classList.contains('stage')){ try { document.fullscreenElement && document.exitFullscreen(); } catch(e){} try { stageLock && stageLock.release(); } catch(e){} stageLock = null; } _closePractice(); try { miniSync(); } catch(e){} };
+const _openPractice = openPractice;
+openPractice = function(s){ if (practice) closePractice(); _openPractice(s); };
 
 /* ---------- meta da semana batida: anel brilha ---------- */
 const _practHTML = practHTML;
@@ -4033,6 +4183,213 @@ window.addEventListener('keydown', e => {
   }
   if (((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing && !view.sheet && !practice && !trainer)){ e.preventDefault(); openSearch(); }
 }, true);
+
+/* ================= NAVEGAÇÃO VIVA ================= */
+const touchy = () => window.matchMedia && matchMedia('(hover: none)').matches;
+function layerOpen(){ return !!(view.sheet || (practice && !practice.mini) || trainer || pop.chord || document.querySelector('#ux-search,#ux-fab,#ux-sheet,#tuner,.cele') || (window.FluidHub && window.FluidHub.isOpen && window.FluidHub.isOpen())); }
+
+/* ---------- a barra some ao rolar para baixo e volta ao rolar para cima ---------- */
+let lastY = window.scrollY, dockHidden = false, scrollRaf = 0;
+function dockShow(){ if (dockHidden){ dockHidden = false; document.body.classList.remove('dock-hide'); } }
+addEventListener('scroll', () => {
+  if (scrollRaf) return; scrollRaf = requestAnimationFrame(() => { scrollRaf = 0;
+    const y = window.scrollY, d = y - lastY, nearEnd = y + innerHeight >= document.documentElement.scrollHeight - 40;
+    if (Math.abs(d) > 6){ const hide = d > 0 && y > 140 && !nearEnd; if (hide !== dockHidden){ dockHidden = hide; document.body.classList.toggle('dock-hide', hide); } lastY = y; }
+    if (nearEnd) dockShow();
+    try { miniSync(); } catch(e){} });
+}, { passive: true });
+
+/* ---------- minibarra: o que está tocando ---------- */
+let mbEl = null;
+function metroVisible(){ const m = document.getElementById('metro'); if (!m) return false; const r = m.getBoundingClientRect(); return r.bottom > 60 && r.top < innerHeight - 120; }
+function practMini(on){
+  const el = document.getElementById('practice'); if (!practice || !el) return;
+  if (on && el.classList.contains('stage')) stageToggle(false);
+  practice.mini = on; el.classList.toggle('mini', on); document.body.classList.toggle('pr-mini', on);
+  if (!on) renderPractice(); hap('tab'); dockShow(); miniSync();
+}
+function miniSync(){
+  const pr = practice && practice.mini, mt = !pr && metro.playing && !metroVisible();
+  const kind = pr ? 'pr' : mt ? 'mt' : '';
+  if (!kind){ if (mbEl){ const e = mbEl; mbEl = null; e.classList.add('out'); setTimeout(() => e.remove(), 260); } document.body.classList.remove('mb-on'); return; }
+  if (!mbEl || mbEl.dataset.kind !== kind){
+    mbEl && mbEl.remove();
+    mbEl = document.createElement('div'); mbEl.className = 'minibar'; mbEl.dataset.kind = kind; mbEl.setAttribute('role','region'); mbEl.setAttribute('aria-label', 'Tocando agora');
+    mbEl.innerHTML = kind === 'pr'
+      ? `<button class="mb-main" data-mb="pr-open" aria-label="Voltar para o treino"><span class="mb-art" style="--c:${hueOf(practice.s)}"><b class="mb-ch"></b><i class="mb-eq"><i></i><i></i><i></i></i></span><span class="mb-tx"><b>${esc(practice.s.title || 'Treino')}</b><small class="mb-sub"></small></span></button>
+         <button class="mb-btn" data-mb="pr-toggle" aria-label="Tocar ou pausar"></button><button class="mb-btn ghost" data-mb="pr-close" aria-label="Encerrar treino">${I.close}</button><i class="mb-prog"></i>`
+      : `<button class="mb-main" data-mb="mt-open" aria-label="Ir para o metrônomo"><span class="mb-art mt" style="--c:#14B8A6">${UXI.metro}</span><span class="mb-tx"><b>Metrônomo</b><small class="mb-sub"></small></span><span class="mb-dots"></span></button>
+         <button class="mb-btn" data-mb="mt-stop" aria-label="Parar o metrônomo">${I.pause}</button>`;
+    document.body.appendChild(mbEl);
+    mbEl.addEventListener('click', e => { const b = e.target.closest('[data-mb]'); if (!b) return; const k = b.dataset.mb; hap('tick');
+      if (k === 'pr-open') practMini(false);
+      if (k === 'pr-toggle'){ practice.playing ? stopMetro() : startMetro(); }
+      if (k === 'pr-close') closePractice();
+      if (k === 'mt-stop') metroStop();
+      if (k === 'mt-open'){ if (view.tab !== 'hoje' && view.tab !== 'treino') goTab('treino'); setTimeout(() => document.getElementById('metro')?.scrollIntoView({ behavior:'smooth', block:'center' }), 60); }
+    });
+  }
+  document.body.classList.add('mb-on');
+  miniUpdate();
+}
+function miniUpdate(){
+  if (!mbEl) return;
+  if (mbEl.dataset.kind === 'pr' && practice){ const p = practice, ch = p.s.chords || [], ci = ch.length ? Math.floor(p.bar / p.bpc) % ch.length : 0, cur = ch[ci];
+    mbEl.querySelector('.mb-ch').textContent = cur ? detect(cur) : '♪';
+    mbEl.querySelector('.mb-sub').textContent = (p.playing ? 'Tocando' : 'Pausado') + ' · ' + Math.round(p.bpm) + ' bpm' + (ch.length > 1 ? ' · depois ' + detect(ch[(ci+1) % ch.length]) : '');
+    const tg = mbEl.querySelector('[data-mb="pr-toggle"]'); const ic = p.playing ? 'pause' : 'play'; if (tg.dataset.ic !== ic){ tg.dataset.ic = ic; tg.innerHTML = I[ic]; }
+    mbEl.classList.toggle('playing', !!p.playing);
+    const pg = mbEl.querySelector('.mb-prog'); if (pg) pg.style.transform = `scaleX(${ch.length ? ((ci + 1) / ch.length).toFixed(3) : 0})`;
+  }
+  if (mbEl.dataset.kind === 'mt'){ mbEl.querySelector('.mb-sub').textContent = metro.bpm + ' bpm · ' + (metro.beats === 6 ? '6/8' : metro.beats + '/4');
+    const d = mbEl.querySelector('.mb-dots'); const n = metro.beats === 6 ? 6 : metro.beats; if (d.children.length !== n) d.innerHTML = '<i></i>'.repeat(n);
+    [...d.children].forEach((x, i) => x.classList.toggle('on', i === metro.beat)); mbEl.classList.add('playing'); }
+}
+const _metroUI = metroUI; metroUI = function(){ _metroUI(); try { miniSync(); } catch(e){} };
+const _metroDots = metroDots; metroDots = function(){ _metroDots(); if (mbEl && mbEl.dataset.kind === 'mt') miniUpdate(); };
+
+/* ---------- deslizar para os lados troca de aba ---------- */
+const TABS = ['hoje','musicas','treino','aulas'];
+function hScroll(el){ for (let n = el; n && n !== document.body; n = n.parentElement){ if (n.scrollWidth > n.clientWidth + 4){ const o = getComputedStyle(n).overflowX; if (o === 'auto' || o === 'scroll') return true; } } return false; }
+let tsw = null;
+app.addEventListener('touchstart', e => {
+  if (e.touches.length !== 1 || layerOpen()) return; const t = e.target;
+  if (t.closest('[data-swipe],input,textarea,select,[contenteditable],.orbit,.metro input') || hScroll(t)) return;
+  const x = e.touches[0].clientX; if (x < 18 || x > innerWidth - 18) return; // bordas: gesto do sistema
+  tsw = { x0: x, y0: e.touches[0].clientY, dx: 0, on: false };
+}, { passive: true });
+app.addEventListener('touchmove', e => {
+  if (!tsw) return; const dx = e.touches[0].clientX - tsw.x0, dy = e.touches[0].clientY - tsw.y0;
+  if (!tsw.on){ if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)){ tsw = null; return; } if (Math.abs(dx) < 16 || Math.abs(dx) < Math.abs(dy) * 1.6) return; tsw.on = true; tsw.x0 += Math.sign(dx) * 16; if (lp) lpCancel(); }
+  const d = e.touches[0].clientX - tsw.x0, i = TABS.indexOf(view.tab), nb = TABS[i + (d < 0 ? 1 : -1)];
+  tsw.dx = d; const x = nb ? d * .45 : d * .12;
+  app.style.transition = 'none'; app.style.transform = `translateX(${x}px)`; app.style.opacity = String(1 - Math.min(.35, Math.abs(x) / 600));
+  edgeHint(nb && Math.abs(d) > 30 ? nb : null, d < 0 ? 'r' : 'l', Math.min(1, Math.abs(d) / 110));
+}, { passive: true });
+function tswEnd(){
+  if (!tsw) return; const s = tsw; tsw = null; if (!s.on) return; swSuppress = Date.now(); edgeHint(null);
+  const i = TABS.indexOf(view.tab), nb = TABS[i + (s.dx < 0 ? 1 : -1)];
+  const reset = () => { app.style.transition = ''; app.style.transform = ''; app.style.opacity = ''; };
+  if (nb && Math.abs(s.dx) > 80){ reset(); goTab(nb); }
+  else { app.style.transition = 'transform .35s cubic-bezier(.2,.9,.3,1.2), opacity .3s'; app.style.transform = ''; app.style.opacity = ''; setTimeout(reset, 360); }
+}
+app.addEventListener('touchend', tswEnd); app.addEventListener('touchcancel', tswEnd);
+let hintEl = null;
+function edgeHint(tab, side, p){
+  if (!tab){ if (hintEl){ hintEl.remove(); hintEl = null; } return; }
+  if (!hintEl){ hintEl = document.createElement('div'); hintEl.className = 'edge-hint'; document.body.appendChild(hintEl); }
+  const names = { hoje:'Hoje', musicas:'Músicas', treino:'Treinar', aulas:'Aulas' }, ic = { hoje:'home', musicas:'music', treino:'train', aulas:'book' };
+  hintEl.className = 'edge-hint ' + side + (p >= 1 ? ' ready' : ''); hintEl.style.setProperty('--p', p.toFixed(2));
+  const html = `${UXI[ic[tab]]}<span>${names[tab]}</span>`; if (hintEl.dataset.t !== tab){ hintEl.dataset.t = tab; hintEl.innerHTML = html; }
+  if (p >= 1 && !hintEl.dataset.r){ hintEl.dataset.r = '1'; hap('tick'); } if (p < 1) delete hintEl.dataset.r;
+}
+
+/* ---------- na música: deslizar passa para a próxima ou a anterior ---------- */
+let ssw = null;
+function songOrder(){ const f = filtered(); return (f.length ? f : songs).map(s => s.id); }
+layer.addEventListener('touchstart', e => {
+  if (view.sheet !== 'song' || e.touches.length !== 1 || trainer || pop.chord) return;
+  const t = e.target; if (!t.closest('.sheet-body') || t.closest('input,textarea,select,[data-swipe],.rb,.fb,.lyrics') || hScroll(t)) return;
+  const x = e.touches[0].clientX; if (x < 18 || x > innerWidth - 18) return;
+  ssw = { x0: x, y0: e.touches[0].clientY, dx: 0, on: false };
+}, { passive: true });
+layer.addEventListener('touchmove', e => {
+  if (!ssw) return; const dx = e.touches[0].clientX - ssw.x0, dy = e.touches[0].clientY - ssw.y0;
+  if (!ssw.on){ if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)){ ssw = null; return; } if (Math.abs(dx) < 16 || Math.abs(dx) < Math.abs(dy) * 1.6) return; ssw.on = true; ssw.x0 += Math.sign(dx) * 16; }
+  const d = e.touches[0].clientX - ssw.x0, ord = songOrder(), i = ord.indexOf(view.song), nid = ord[i + (d < 0 ? 1 : -1)];
+  ssw.dx = d; ssw.nid = nid; const b = layer.querySelector('.sheet-body'); if (!b) return;
+  const x = nid ? d * .5 : d * .12; b.style.transition = 'none'; b.style.transform = `translateX(${x}px)`; b.style.opacity = String(1 - Math.min(.5, Math.abs(x) / 500));
+  peek(nid && Math.abs(d) > 30 ? songs.find(s => s.id === nid) : null, d < 0 ? 'r' : 'l', Math.min(1, Math.abs(d) / 110));
+}, { passive: true });
+function sswEnd(){
+  if (!ssw) return; const s = ssw; ssw = null; if (!s.on) return; swSuppress = Date.now(); peek(null);
+  const b = layer.querySelector('.sheet-body'); if (!b) return;
+  if (s.nid && Math.abs(s.dx) > 80){
+    const dir = s.dx < 0 ? 1 : -1; b.style.transition = 'transform .16s ease-in, opacity .16s'; b.style.transform = `translateX(${-dir * 60}%)`; b.style.opacity = '0'; hap('swipe');
+    setTimeout(() => { pushRecent(s.nid); view.song = s.nid; view.confirmDel = false; refreshSheet(); uiSound('open');
+      const nb = layer.querySelector('.sheet-body'); if (nb && nb.animate && !reduceMotion()) nb.animate([{ transform:`translateX(${dir * 40}%)`, opacity:0 }, { transform:'none', opacity:1 }], { duration:340, easing:'cubic-bezier(.2,.85,.2,1)' });
+      const h = layer.querySelector('.sheet-head h2'); if (h && h.animate && !reduceMotion()) h.animate([{ opacity:0, transform:`translateX(${dir*16}px)` }, { opacity:1, transform:'none' }], { duration:300 }); }, 150);
+  } else { b.style.transition = 'transform .35s cubic-bezier(.2,.9,.3,1.2), opacity .3s'; b.style.transform = ''; b.style.opacity = ''; setTimeout(() => { b.style.transition = ''; }, 360); }
+}
+layer.addEventListener('touchend', sswEnd); layer.addEventListener('touchcancel', sswEnd);
+let peekEl = null;
+function peek(s, side, p){
+  if (!s){ if (peekEl){ peekEl.remove(); peekEl = null; } return; }
+  if (!peekEl){ peekEl = document.createElement('div'); document.body.appendChild(peekEl); }
+  peekEl.className = 'song-peek ' + side + (p >= 1 ? ' ready' : ''); peekEl.style.setProperty('--p', p.toFixed(2));
+  if (peekEl.dataset.id !== s.id){ peekEl.dataset.id = s.id; peekEl.innerHTML = `<span class="dotc" style="background:${hueOf(s)}">${esc(initials(s.title))}</span><span><small>${side === 'r' ? 'Próxima' : 'Anterior'}</small><b>${esc(s.title || 'Sem título')}</b></span>`; }
+  if (p >= 1 && !peekEl.dataset.r){ peekEl.dataset.r = '1'; hap('tick'); } if (p < 1) delete peekEl.dataset.r;
+}
+
+/* ---------- puxar para atualizar (tela Hoje) ---------- */
+let ptr = null, ptrEl = null, refreshing = false;
+document.addEventListener('touchstart', e => {
+  if (refreshing || view.tab !== 'hoje' || window.scrollY > 2 || e.touches.length !== 1 || layerOpen()) return;
+  if (!e.target.closest('#app')) return;
+  ptr = { y0: e.touches[0].clientY, x0: e.touches[0].clientX, dy: 0 };
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (!ptr) return; const dy = e.touches[0].clientY - ptr.y0, dx = e.touches[0].clientX - ptr.x0;
+  if (dy < 0 || (Math.abs(dx) > Math.abs(dy) && !ptr.on)){ ptrReset(); return; }
+  if (!ptr.on && dy < 10) return; ptr.on = true;
+  const pull = Math.min(110, dy * .5); ptr.dy = pull;
+  if (!ptrEl){ ptrEl = document.createElement('div'); ptrEl.className = 'ptr'; ptrEl.innerHTML = `<span class="ptr-ic"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="ptrG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#1FC8A8"/><stop offset=".5" stop-color="#9A5BE6"/><stop offset="1" stop-color="#E5245E"/></linearGradient></defs><path d="M40.6 27H67.2Q70.6 27 70.6 30.4V34.4Q70.6 39.6 65.4 39.6H33.2Q30.6 39.6 32.2 37.6L38.4 28.6Q39.3 27 40.6 27Z" fill="url(#ptrG)"/><path d="M50.2 45.6H61.2Q64.6 45.6 64.6 49V53.6Q64.6 57.2 61 57.2H50.6Q48.4 57.2 47 59L40.6 67Q38.8 69.2 36 69.2H34Q31 69.2 31 66.4V61Q31 58.2 34 58.2H36.4Q38.6 58.2 39.8 56.7L46.8 47.4Q48.1 45.6 50.2 45.6Z" fill="url(#ptrG)"/></svg></span><small>Puxe para atualizar</small>`; document.body.appendChild(ptrEl); }
+  const ready = pull >= 70; ptrEl.classList.toggle('ready', ready); ptrEl.querySelector('small').textContent = ready ? 'Solte para atualizar' : 'Puxe para atualizar';
+  if (ready && !ptr.r){ ptr.r = true; hap('tick'); } if (!ready) ptr.r = false;
+  ptrEl.style.setProperty('--y', pull + 'px'); ptrEl.style.setProperty('--r', (pull * 3.2) + 'deg'); ptrEl.style.opacity = String(Math.min(1, pull / 40));
+  app.style.transition = 'none'; app.style.transform = `translateY(${pull * .6}px)`;
+}, { passive: true });
+function ptrReset(){ ptr = null; app.style.transition = 'transform .35s cubic-bezier(.2,.9,.3,1.2)'; app.style.transform = ''; setTimeout(() => { app.style.transition = ''; }, 360);
+  if (ptrEl && !refreshing){ const e = ptrEl; ptrEl = null; e.classList.add('out'); setTimeout(() => e.remove(), 250); } }
+document.addEventListener('touchend', async () => {
+  if (!ptr) return; const go = ptr.on && ptr.dy >= 70; if (ptr.on) swSuppress = Date.now();
+  if (!go) return ptrReset();
+  refreshing = true; ptr = null; ptrEl.classList.add('spin'); ptrEl.querySelector('small').textContent = 'Atualizando…'; ptrEl.style.setProperty('--y', '60px');
+  app.style.transition = 'transform .3s'; app.style.transform = 'translateY(40px)'; hap('refresh');
+  const t0 = Date.now();
+  try { await Promise.all([db && db.refresh ? db.refresh() : null, window.FluidHub && window.FluidHub.refresh ? window.FluidHub.refresh() : null]); } catch(e){}
+  await new Promise(r => setTimeout(r, Math.max(0, 900 - (Date.now() - t0))));
+  refreshing = false; render(); ptrReset(); uiSound('done'); toast('Tudo atualizado');
+});
+
+/* ---------- botão voltar do celular fecha a camada aberta ---------- */
+let histOn = false, ignorePop = 0;
+function closeTop(){
+  if (document.getElementById('ux-search')) return closeSearch();
+  if (document.getElementById('ux-fab')) return fabClose();
+  if (document.getElementById('ux-sheet')) return uxSheetClose();
+  if (document.querySelector('.cele')) return document.querySelectorAll('.cele').forEach(x => x.remove());
+  if (document.getElementById('tuner')) return closeTuner();
+  if (trainer) return closeTrainer();
+  if (pop.chord) return closePop();
+  if (practice && !practice.mini) return practice.playing ? practMini(true) : closePractice();
+  if (window.FluidHub && window.FluidHub.isOpen && window.FluidHub.isOpen()) return window.FluidHub.back();
+  if (view.sheet === 'editor'){ toast('Toque em Salvar ou em Cancelar'); return; }
+  if (view.sheet === 'trocas'){ view.sheet = 'song'; return refreshSheet(); }
+  if (view.sheet === 'lesson'){ led = null; return closeSheet(); }
+  if (view.sheet) return closeSheet();
+}
+setInterval(() => {
+  const o = layerOpen();
+  try { if (o && !histOn){ history.pushState({ fluidLayer: 1 }, ''); histOn = true; }
+    else if (!o && histOn){ histOn = false; ignorePop++; history.back(); } } catch(e){}
+}, 250);
+addEventListener('popstate', () => {
+  if (ignorePop){ ignorePop--; return; } if (!histOn) return; histOn = false;
+  closeTop();
+});
+
+/* ---------- atalhos do ícone do app (segurar o ícone na tela inicial) ---------- */
+(function(){
+  let a = ''; try { a = new URLSearchParams(location.search).get('a') || ''; } catch(e){} if (!a) return;
+  try { const u = new URL(location.href); u.searchParams.delete('a'); history.replaceState(null, '', u.pathname + u.search + u.hash); } catch(e){}
+  const run = () => { if (mode === 'loading') return setTimeout(run, 300);
+    if (a === 'afinar') openTuner();
+    if (a === 'metronomo'){ metro.open = true; try { localStorage.setItem('fluid.metro.open','1'); } catch(e){} goTab('treino'); setTimeout(() => document.getElementById('metro')?.scrollIntoView({ behavior:'smooth', block:'center' }), 200); }
+    if (a === 'duvida') quickQuestion();
+    if (a === 'buscar') openSearch(); };
+  setTimeout(run, 600);
+})();
 /* ================= FIM UX ================= */
 
 /* @@END-EXTRAS@@ */
@@ -4092,8 +4449,8 @@ document.addEventListener('keydown', e => {
   if (e.key==='Escape' && trainer){ closeTrainer(); return; }
   if (e.key==='Escape' && view.sheet==='trocas'){ view.sheet='song'; refreshSheet(); return; }
   if (e.key==='Escape' && view.sheet==='lesson'){ led=null; closeSheet(); return; }
-  if (e.key==='Escape'){ if (pop.chord) closePop(); else if (practice) closePractice(); else if (view.sheet==='editor'){ clearDraft(); ed=null; view.sheet = view.song?'song':null; view.sheet?refreshSheet():closeSheet(); } else if (view.sheet) closeSheet(); }
-  if (e.key===' ' && practice && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName) && document.activeElement.tagName!=='BUTTON'){ e.preventDefault(); practice.playing?stopMetro():startMetro(); }
+  if (e.key==='Escape'){ if (pop.chord) closePop(); else if (practice && !practice.mini) closePractice(); else if (view.sheet==='editor'){ clearDraft(); ed=null; view.sheet = view.song?'song':null; view.sheet?refreshSheet():closeSheet(); } else if (view.sheet) closeSheet(); }
+  if (e.key===' ' && practice && !practice.mini && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName) && document.activeElement.tagName!=='BUTTON'){ e.preventDefault(); practice.playing?stopMetro():startMetro(); }
 });
 
 render();

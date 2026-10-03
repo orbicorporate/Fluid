@@ -1283,6 +1283,8 @@
     newStudent(){ open('alunos'); go({ type:'sform', draft:{} }); },
     quickPay,
     isOpen(){ return st.open; },
+    back(){ if (st.view) back(); else close(); },
+    async refresh(){ if (!st.students.length && !st.loaded) return; await loadTeacher(); if (st.students.length) await loadExtras(); draw(); },
     chipHTML(){
       const w = W(); if (!w) return '';
       const b = window.FLUID_HUB_BADGE || {};

@@ -241,6 +241,7 @@
       try { const { data: mem } = await sb.from('notebook_members').select('user_id, profiles(name)').eq('notebook_id', nb); (mem||[]).forEach(m => names[m.user_id] = ((m.profiles && m.profiles.name) || 'Alguém').split(' ')[0]); } catch(e){}
       const seen = localStorage.getItem(SK); const meId = me && me.id;
       if (seen){ const news = rows.filter(r => r.updated_by && r.updated_by !== meId && r.updated_at > seen && r.collection !== 'meta');
+        window.FLUID_NEWS = { songs: news.filter(r => r.collection === 'songs').length, lessons: news.filter(r => r.collection === 'lessons').length };
         if (news.length) setTimeout(() => showNews(news.map(r => ({ who: nameOf(r.updated_by), what: label(r.collection, r.data), c: r.collection }))), 1400); }
       localStorage.setItem(SK, new Date().toISOString());
       flush();
@@ -249,7 +250,7 @@
         if (r.notebook_id && r.notebook_id !== nb) return;
         if (p.eventType === 'DELETE') col(r.collection).delete(r.id); else col(r.collection).set(r.id, p.new.data);
         emit(r.collection); saveCache();
-        if (p.new && p.new.updated_by && p.new.updated_by !== meId && r.collection !== 'meta' && window.toast){ window.toast(nameOf(p.new.updated_by) + ' atualizou ' + label(r.collection, p.new.data)); localStorage.setItem(SK, new Date().toISOString()); }
+        if (p.new && p.new.updated_by && p.new.updated_by !== meId && r.collection !== 'meta' && window.toast){ window.toast(nameOf(p.new.updated_by) + ' atualizou ' + label(r.collection, p.new.data)); const nw = window.FLUID_NEWS || (window.FLUID_NEWS = { songs:0, lessons:0 }); if (r.collection === 'songs') nw.songs++; if (r.collection === 'lessons') nw.lessons++; localStorage.setItem(SK, new Date().toISOString()); }
       }).subscribe();
     })());
     const write = async (c, id, data) => {
@@ -272,7 +273,13 @@
       onSnapshot: (next, err) => { const m = docSubs.get(c) || new Map(); docSubs.set(c, m); const arr = m.get(id) || []; arr.push(next); m.set(id, arr);
         load().then(() => next(snapDoc(c, id))).catch(e => err && err(e)); return () => { m.set(id, (m.get(id)||[]).filter(f => f !== next)); }; }
     });
+    const refresh = async () => {
+      const { data, error } = await sb.from('items').select('collection,id,data,updated_by,updated_at').eq('notebook_id', nb); if (error) throw error;
+      const touched = new Set(cache.keys()); cache.forEach(m => m.clear()); (data||[]).forEach(r => { col(r.collection).set(r.id, r.data); touched.add(r.collection); });
+      saveCache(); touched.forEach(emit); flush();
+    };
     return {
+      refresh,
       collection: c => ({ path: c,
         doc: id => docRef(c, id || ('d' + Date.now().toString(36) + Math.random().toString(36).slice(2,7))),
         onSnapshot: (next, err) => { const arr = colSubs.get(c) || []; arr.push(next); colSubs.set(c, arr);
