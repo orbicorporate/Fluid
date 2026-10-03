@@ -121,6 +121,7 @@
     root.addEventListener('submit', onSubmit);
     root.addEventListener('input', onInput);
     root.addEventListener('change', onInput);
+    root.addEventListener('fluid-swipe', e => { const el = e.target.closest('[data-swipe="pay"]'); if (!el) return; if (e.detail.dir === 'r') quickPay(el.dataset.id); else go({ type:'card', id: el.dataset.id }); });
     document.addEventListener('keydown', e => { if (st.open && e.key==='Escape'){ if (st.view) back(); else close(); } });
   }
   async function open(tab){
@@ -158,8 +159,9 @@
     if (st.tab==='biblioteca') return viewLibrary();
     return viewAccount();
   }
+  const skel = () => `<div class="skel-wrap" aria-label="Carregando" role="status"><div class="skel skel-h"></div>${'<div class="skel skel-row"><i></i><span><b></b><small></small></span></div>'.repeat(4)}</div>`;
   function guard(){
-    if (!st.loaded) return `<div class="hb-empty"><p>Carregando…</p></div>`;
+    if (!st.loaded) return skel();
     if (st.loadErr) return `<div class="hb-empty"><h3>Não consegui abrir agora</h3><p>${esc(st.loadErr)}</p><button class="btn" data-h="retry">Tentar de novo</button></div>`;
     return '';
   }
@@ -346,7 +348,8 @@
     const k = p.virtual ? 'plan' : payStatus(p), color = colorFor(s.id, s.color);
     const label = p.description || (p.period && /^\d{4}-\d{2}$/.test(p.period) ? 'Mensalidade de ' + MONTHS[+p.period.slice(5)-1] : 'Cobrança');
     const open = st.payOpen === p.id;
-    return `<div class="hb-pay ${k}${open?' open':''}" style="--c:${color}">
+    const sw = !p.virtual && !p.paid_at && !open;
+    return `${sw ? `<div class="sw" data-swipe="pay" data-id="${p.id}" data-swipe-r="Recebi" data-swipe-l="${k==='late'?'Cobrar':'Lembrar'}"><div class="sw-bg" aria-hidden="true"><span class="r">${IC.check}Recebi</span><span class="l">${IC.wa}${k==='late'?'Cobrar':'Lembrar'}</span></div>` : ''}<div class="hb-pay ${k}${open?' open':''}${sw?' sw-fg':''}" style="--c:${color}">
       <button class="hb-pay-main" ${inStudent ? 'tabindex="-1"' : `data-h="stu" data-id="${s.id}"`}>${avatar(s.name, color, 'sm')}
         <span class="hb-rmain"><b>${esc(inStudent ? label : s.name)}</b><small>${inStudent ? '' : esc(label) + ' · '}${p.virtual ? 'vence ' + shortDate(p.due_date) : esc(dueLabel(p))}${p.paid_at && p.method ? ' · ' + esc(METHOD_LABEL(p.method)) : ''}</small></span>
         <span class="hb-amt">${brl(p.amount)}</span></button>
@@ -354,7 +357,7 @@
         ${p.paid_at ? `<button class="btn ghost sm" data-h="unpay" data-id="${p.id}">Desfazer</button><button class="btn sm" data-h="card" data-id="${p.id}">${IC.receipt}Recibo</button>`
           : `<button class="hb-icon sm" data-h="payedit" data-id="${p.id}" aria-label="Editar cobrança">${IC.edit}</button><button class="btn sm hb-wa" data-h="card" data-id="${p.id}">${IC.wa}${k==='late'?'Cobrar':'Lembrar'}</button><button class="btn sm primary" data-h="payopen" data-id="${p.id}">${IC.check}Recebi</button>`}</div>
         ${open ? `<div class="hb-methods"><span>Recebido como?</span>${METHODS.map(([k2,l]) => `<button class="hb-chip" data-h="pay" data-id="${p.id}" data-v="${k2}">${l}</button>`).join('')}<button class="hb-icon sm" data-h="payopen" data-id="" aria-label="Cancelar">${IC.close}</button></div>` : ''}`}
-    </div>`;
+    </div>${sw ? '</div>' : ''}`;
   }
   function chargeText(p, s){
     const tpl = (st.settings.charge_msg || '').trim() || 'Oi {nome}! Tudo bem? Passando para lembrar da {descricao} das aulas de violão, no valor de {valor}, {vencimento}.{pix} Obrigado!';
@@ -434,10 +437,10 @@
     ].filter(Boolean);
     return `${rangeBar()}
       <div class="hb-stats fin">
-        <div class="hb-stat" style="--c:#22C55E"><small>Recebido</small><b>${brl(received)}</b><i>${paidIn.length} ${paidIn.length===1?'pagamento':'pagamentos'}</i></div>
-        <div class="hb-stat" style="--c:#6366F1"><small>A receber</small><b>${brl(openR)}</b><i>no período</i></div>
-        <div class="hb-stat" style="--c:#EF4444"><small>Atrasado</small><b>${brl(lateR)}</b><i>no período</i></div>
-        <div class="hb-stat" style="--c:#8B5CF6"><small>Pontualidade</small><b>${punct===null ? '—' : punct+'%'}</b><i>pagos até o vencimento</i></div>
+        <div class="hb-stat" style="--c:#22C55E"><small>Recebido</small><b data-count="${received}" data-fmt="brl" data-ck="fin-rec">${brl(received)}</b><i>${paidIn.length} ${paidIn.length===1?'pagamento':'pagamentos'}</i></div>
+        <div class="hb-stat" style="--c:#6366F1"><small>A receber</small><b data-count="${openR}" data-fmt="brl" data-ck="fin-open">${brl(openR)}</b><i>no período</i></div>
+        <div class="hb-stat" style="--c:#EF4444"><small>Atrasado</small><b data-count="${lateR}" data-fmt="brl" data-ck="fin-late">${brl(lateR)}</b><i>no período</i></div>
+        <div class="hb-stat" style="--c:#8B5CF6"><small>Pontualidade</small><b ${punct===null ? '' : `data-count="${punct}" data-fmt="pct" data-ck="fin-punct"`}>${punct===null ? '—' : punct+'%'}</b><i>pagos até o vencimento</i></div>
       </div>
       <div class="hb-bar" aria-label="Recebido ${Math.round(pct(sumOf(paidDue)))}% do previsto"><i class="ok" style="width:${pct(sumOf(paidDue))}%"></i><i class="bad" style="width:${pct(lateR)}%"></i><i class="info" style="width:${pct(openR)}%"></i></div>
       <p class="hb-hint center">${expected ? `${brl(sumOf(paidDue))} de ${brl(expected)} previstos no período (${Math.round(pct(sumOf(paidDue)))}%)` : 'Nenhuma cobrança com vencimento no período'}</p>
@@ -695,6 +698,16 @@
       case 'signout': return W().signOut();
     }
   }
+  async function quickPay(id, method){
+    const p = st.payments.find(x => x.id===id); if (!p) return;
+    const upd = { paid_at: today(), method: method || 'pix' };
+    Object.assign(p, upd); draw(); updateBadge();
+    try { must(await W().sb.from('payments').update(upd).eq('id', id)); } catch(e){ p.paid_at = null; p.method = null; draw(); updateBadge(); return say(W().errText(e)); }
+    try { window.FLUID_SOUND && window.FLUID_SOUND('done'); } catch(e){}
+    const undo = async () => { p.paid_at = null; p.method = null; draw(); updateBadge(); try { must(await W().sb.from('payments').update({ paid_at:null, method:null }).eq('id', id)); } catch(e){} };
+    const s = studentById(p.student_id), msg = `${s ? s.name.split(' ')[0] + ' pagou ' : 'Recebido '}${brl(p.amount)} via Pix`;
+    if (window.FLUID_UNDO) window.FLUID_UNDO(msg, undo); else say(msg);
+  }
   async function makeStudentFolder(s, name){
     const sb = W().sb;
     const nb = must(await sb.rpc('create_notebook', { p_name: name || ('Pasta de ' + s.name.split(' ')[0]), p_kind: 'student', p_color: s.color || colorFor(s.id) }));
@@ -858,7 +871,7 @@
     return out.sort((x,y) => String(x.time).localeCompare(String(y.time)));
   }
   function viewAgenda(){
-    if (!st.extrasLoaded){ loadExtras().then(draw); return `<div class="hb-empty"><p>Carregando…</p></div>`; }
+    if (!st.extrasLoaded){ loadExtras().then(draw); return skel(); }
     if (!st.students.length) return `<div class="hb-empty big"><h3>Sua agenda vem dos alunos</h3><p>Cadastre os alunos com os dias e o horário da aula. A semana aparece aqui, com presença, falta e reposição.</p><button class="btn primary" data-h="stu-new">${IC.plus}Cadastrar aluno</button></div>`;
     const ws = st.week || weekStart(today()), t = today(), days = Array.from({length:7}, (_,i) => addDays(ws, i));
     const all = days.flatMap(slotsOn), done = all.filter(x => x.a && x.a.status==='ok').length, miss = all.filter(x => x.a && x.a.status==='falta').length;
@@ -1251,7 +1264,25 @@
   window.FluidHub = {
     open, close,
     sendSong(song){ mount(); st.open = true; root.hidden = false; document.documentElement.classList.add('hb-lock'); st.view = { type:'send', song, from: W().current().id, sel: [] }; draw(); W().loadNotebooks().then(loadFolders).then(draw).catch(()=>{}); },
-    boot(){ mount(); loadTeacher().catch(() => {}); },
+    boot(){ mount(); loadTeacher().then(() => st.students.length ? loadExtras() : null).then(() => { if (typeof window.render === 'function') try { window.render(); } catch(e){} }).catch(() => {}); },
+    todayInfo(){
+      if (!st.loaded || !st.students.length) return null; const t = today();
+      const lessons = slotsOn(t).filter(x => !(x.a && x.a.status==='moved')).map(x => ({ id: x.s.id, name: x.s.name, time: String(x.time||'').slice(0,5), color: colorFor(x.s.id, x.s.color), status: x.a ? x.a.status : '', repo: !!x.repo }));
+      const late = st.payments.filter(p => payStatus(p)==='late').sort((a,b)=>a.due_date.localeCompare(b.due_date)).map(p => { const s = studentById(p.student_id); return { id: p.id, sid: p.student_id, name: s ? s.name : '', color: s ? colorFor(s.id, s.color) : '#888', amount: brl(p.amount), raw: Number(p.amount)||0, label: dueLabel(p) }; });
+      const soon = st.payments.filter(p => payStatus(p)==='soon').length;
+      const leads = (st.leads||[]).filter(l => !l.seen).length;
+      return { lessons, late, soon, leads, lateSum: brl(late.reduce((a,x)=>a+x.raw,0)), students: st.students.filter(s => s.status==='active').length };
+    },
+    search(q){
+      const n = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); const k = n(q).trim(); if (!k || !st.loaded) return [];
+      return st.students.filter(s => n(s.name + ' ' + (s.phone||'') + ' ' + (s.email||'')).includes(k)).slice(0,6).map(s => ({ id: s.id, name: s.name, color: colorFor(s.id, s.color), sub: scheduleText(s) + (studentPayState(s)==='late' ? ' · em atraso' : '') }));
+    },
+    async openTab(tab){ await open(tab); },
+    openStudent(id){ open('alunos'); go({ type:'student', id }); },
+    openCard(id){ open('financeiro'); go({ type:'card', id }); },
+    newStudent(){ open('alunos'); go({ type:'sform', draft:{} }); },
+    quickPay,
+    isOpen(){ return st.open; },
     chipHTML(){
       const w = W(); if (!w) return '';
       const b = window.FLUID_HUB_BADGE || {};
