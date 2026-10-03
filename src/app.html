@@ -1513,6 +1513,15 @@ body.mb-on .wrap{padding-bottom:calc(220px + env(safe-area-inset-bottom,0px))}
 @media (prefers-reduced-motion:reduce){.dock-pill,.dock-in,.minibar{transition:none!important}::view-transition-old(root),::view-transition-new(root){animation:none!important}}
 .calm ::view-transition-old(root),.calm ::view-transition-new(root){animation:none!important}
 body:has(.dock) .fx-acc{display:none}
+/* brilhos de fundo sem filter:blur: no Safari e no Chrome o desfoque escapa do canto arredondado e vira um quadrado */
+.hj-cont::before{filter:none;opacity:.22;background:radial-gradient(closest-side,var(--sc),transparent);width:220px;height:200px;left:-70px;top:-70px}
+.panel.ask::before{filter:none;opacity:.16;background:radial-gradient(closest-side,var(--accent),transparent);width:240px;height:240px;right:-90px;top:-100px}
+.sheet::before{filter:none;opacity:.32;background:radial-gradient(closest-side,var(--sheetHue,var(--blob1)),transparent)}
+.hj-cont,.hj-hero,.panel.ask,.pract,.sheet,.hj-card{isolation:isolate}
+.hj-ring .rg-prog,.pr-ring.full .rg-prog{filter:none}
+@keyframes glowP{50%{stroke:#4ADE80}}
+.sat .s-song::after{filter:none}
+.sat .s-chord{-webkit-backdrop-filter:none;backdrop-filter:none}
 /* ================= FIM UX ================= */
 
 /* @@END-EXTRAS-CSS@@ */

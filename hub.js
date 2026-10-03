@@ -1029,7 +1029,8 @@
   .hb-folder{position:relative;padding:20px 20px 18px;border-radius:24px;display:flex;flex-direction:column;gap:2px;overflow:hidden;
     background:linear-gradient(150deg,color-mix(in srgb,var(--c) 10%,var(--glass,transparent)),color-mix(in srgb,var(--c) 3%,var(--glass,transparent)));
     border:1px solid color-mix(in srgb,var(--c) 16%,var(--glassEdgeSoft,transparent));box-shadow:var(--glassHi,none),0 10px 30px -22px color-mix(in srgb,var(--c) 70%,transparent)}
-  .hb-folder::before{content:"";position:absolute;right:-50px;top:-60px;width:160px;height:160px;border-radius:50%;background:var(--c);opacity:.10;filter:blur(30px);pointer-events:none}
+  .hb-folder::before{content:"";position:absolute;right:-70px;top:-80px;width:200px;height:200px;border-radius:50%;background:radial-gradient(closest-side,var(--c),transparent);opacity:.14;pointer-events:none}
+  .hb-folder{isolation:isolate}
   .hb-folder.on{border-color:color-mix(in srgb,var(--c) 45%,transparent);box-shadow:var(--glassHi,none),0 0 0 3px color-mix(in srgb,var(--c) 12%,transparent),0 12px 30px -20px color-mix(in srgb,var(--c) 70%,transparent)}
   .hb-ftop{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
   .hb-fic{width:38px;height:38px;border-radius:13px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(160deg,color-mix(in srgb,var(--c) 60%,#fff),var(--c));box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 14px -8px var(--c)}
