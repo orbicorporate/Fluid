@@ -548,4 +548,8 @@ body:has(.dock) .fx-acc{display:none}
 @keyframes glowP{50%{stroke:#4ADE80}}
 .sat .s-song::after{filter:none}
 .sat .s-chord{-webkit-backdrop-filter:none;backdrop-filter:none}
+/* acordes que você já sabe: menores e discretos, para o foco ficar no que falta aprender */
+.sat .s-chord.known{height:24px;min-width:30px;padding:0 8px;font-size:11px;font-weight:500;color:color-mix(in srgb,var(--ok) 80%,var(--text));background:color-mix(in srgb,var(--ok) 12%,var(--gi1));border:1px solid color-mix(in srgb,var(--ok) 26%,transparent);box-shadow:none}
+.sat .s-chord.known .s-n{opacity:.7}
+.sat.on .s-chord.known{box-shadow:0 0 0 2px var(--ok)}
 /* ================= FIM UX ================= */

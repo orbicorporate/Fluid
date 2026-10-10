@@ -1522,6 +1522,10 @@ body:has(.dock) .fx-acc{display:none}
 @keyframes glowP{50%{stroke:#4ADE80}}
 .sat .s-song::after{filter:none}
 .sat .s-chord{-webkit-backdrop-filter:none;backdrop-filter:none}
+/* acordes que você já sabe: menores e discretos, para o foco ficar no que falta aprender */
+.sat .s-chord.known{height:24px;min-width:30px;padding:0 8px;font-size:11px;font-weight:500;color:color-mix(in srgb,var(--ok) 80%,var(--text));background:color-mix(in srgb,var(--ok) 12%,var(--gi1));border:1px solid color-mix(in srgb,var(--ok) 26%,transparent);box-shadow:none}
+.sat .s-chord.known .s-n{opacity:.7}
+.sat.on .s-chord.known{box-shadow:0 0 0 2px var(--ok)}
 /* ================= FIM UX ================= */
 
 /* @@END-EXTRAS-CSS@@ */
@@ -1957,7 +1961,7 @@ function filtered(){
 }
 function chordSat(c, i, ring, count){
   const txt = view.display==='num' && codeFor[c] ? codeFor[c] : c;
-  const k = Math.min(1.4, .82 + .18*((count[c]||1)-1));
+  const k = ring==='known' ? Math.min(.95, .78 + .06*((count[c]||1)-1)) : Math.min(1.4, .82 + .18*((count[c]||1)-1));
   return `<button class="sat${view.chordFilter===c?' on':''}" data-orb="${ring}" data-i="${i}" data-k="${k.toFixed(2)}" data-pop="${esc(c)}" aria-label="${esc(c)}: ${isMastered(c)?'você já sabe':'aprendendo'}, usado em ${count[c]} ${count[c]===1?'música':'músicas'}" title="${esc(c)}${codeFor[c]?' · '+esc(codeFor[c]):''} · ${count[c]} ${count[c]===1?'música':'músicas'}"><span class="s-chord${ring==='known'?' known':''}${txt!==c?' mono':''}">${esc(txt)}${count[c]>1?`<span class="s-n">×${count[c]}</span>`:''}</span></button>`;
 }
 function render(){
