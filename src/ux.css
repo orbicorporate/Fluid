@@ -569,4 +569,7 @@ body:has(.dock) .fx-acc{display:none}
 .ro-mode .ccard{outline:1.5px dashed color-mix(in srgb,var(--accent) 35%,transparent);outline-offset:-1.5px}
 .ro-tip{margin-top:10px}
 @media (prefers-reduced-motion:reduce){.ccard.ro-lift{transition:none!important}}
+/* sem zoom no toque: campos com 16px (o iPhone dá zoom abaixo disso) e sem toque duplo para ampliar */
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media (hover:none){input,textarea,select{font-size:16px!important}}
 /* ================= FIM UX ================= */

@@ -912,4 +912,8 @@ document.addEventListener('mousemove', e => { if (rdPend){ if (Math.hypot(e.clie
 document.addEventListener('mouseup', () => { if (rdPend){ clearTimeout(rdPend.t); rdPend = null; } if (rd){ swSuppress = Date.now(); rdEnd(false); } });
 layer.addEventListener('contextmenu', e => { if (e.target.closest('.chords > .ccard')) e.preventDefault(); });
 window.addEventListener('keydown', e => { if (e.key === 'Escape' && rd){ e.stopImmediatePropagation(); rdEnd(true); } }, true);
+/* bloqueia o gesto de pinça do iPhone (o tamanho da letra fica no botão Aa) */
+['gesturestart','gesturechange'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+let lastTouchEnd = 0; document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTouchEnd < 300 && !e.target.closest('input,textarea,select,button,a,[data-swipe]')) e.preventDefault(); lastTouchEnd = n; }, { passive: false });
 /* ================= FIM UX ================= */

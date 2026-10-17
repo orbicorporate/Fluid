@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#EDEFF6">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
@@ -1558,6 +1558,9 @@ body:has(.dock) .fx-acc{display:none}
 .ro-mode .ccard{outline:1.5px dashed color-mix(in srgb,var(--accent) 35%,transparent);outline-offset:-1.5px}
 .ro-tip{margin-top:10px}
 @media (prefers-reduced-motion:reduce){.ccard.ro-lift{transition:none!important}}
+/* sem zoom no toque: campos com 16px (o iPhone dá zoom abaixo disso) e sem toque duplo para ampliar */
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media (hover:none){input,textarea,select{font-size:16px!important}}
 /* ================= FIM UX ================= */
 
 /* @@END-EXTRAS-CSS@@ */
@@ -4655,6 +4658,10 @@ document.addEventListener('mousemove', e => { if (rdPend){ if (Math.hypot(e.clie
 document.addEventListener('mouseup', () => { if (rdPend){ clearTimeout(rdPend.t); rdPend = null; } if (rd){ swSuppress = Date.now(); rdEnd(false); } });
 layer.addEventListener('contextmenu', e => { if (e.target.closest('.chords > .ccard')) e.preventDefault(); });
 window.addEventListener('keydown', e => { if (e.key === 'Escape' && rd){ e.stopImmediatePropagation(); rdEnd(true); } }, true);
+/* bloqueia o gesto de pinça do iPhone (o tamanho da letra fica no botão Aa) */
+['gesturestart','gesturechange'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+let lastTouchEnd = 0; document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTouchEnd < 300 && !e.target.closest('input,textarea,select,button,a,[data-swipe]')) e.preventDefault(); lastTouchEnd = n; }, { passive: false });
 /* ================= FIM UX ================= */
 
 /* @@END-EXTRAS@@ */
