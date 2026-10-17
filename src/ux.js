@@ -268,6 +268,7 @@ function quickQuestion(){
 function fabItems(){
   const teacher = window.FluidHub && window.FluidHub.todayInfo && window.FluidHub.todayInfo();
   return [
+    AI.ready && ['ai', 'Perguntar ao assistente', '#EC4899', () => aiOpen()],
     ['paste', 'Colar mensagem do professor', '#8B5CF6', () => openEditor(null, { paste: true })],
     ['music', 'Nova música', '#14B8A6', () => openEditor(null)],
     ['book', 'Registrar aula', '#F97316', () => openLesson(null)],
@@ -425,6 +426,7 @@ function srItems(raw){
     out.push({ h:'Atalhos' }); cmds.slice(0, 6).forEach(c => out.push(c));
     return out;
   }
+  if (AI.ready) out.push({ h:'Assistente' }, { t: 'Perguntar: ' + raw.trim(), sub: 'O assistente responde e pode organizar para você', ic:'ai', c:'#EC4899', run: () => aiOpen(raw.trim()) });
   // acordes
   const {names} = chordStats(); const guess = normName(raw.trim());
   const chs = [...new Set([...names.filter(n => nrm(n).startsWith(k) || nrm(codeFor[n]||'').startsWith(k)), ...(chordFromName(guess) && !names.includes(guess) ? [guess] : [])])].slice(0, 4);
@@ -505,7 +507,7 @@ function renderHoje(){
     </section>` : '';
   app.innerHTML = headerHTML() + `
     <div class="hj-greet"><h1>${greet()}${me ? ', ' + esc(me) : ''}</h1><p>${esc(dateTxt)}</p></div>
-    <button class="hj-search" data-act="search">${I.search}<span>Buscar música, acorde, aula${window.FluidHub && window.FluidWeb ? ', aluno' : ''}…</span><kbd>/</kbd></button>
+    <div class="hj-row"><button class="hj-search" data-act="search">${I.search}<span>Buscar música, acorde, aula${window.FluidHub && window.FluidWeb ? ', aluno' : ''}…</span><kbd>/</kbd></button>${AI.ready ? `<button class="hj-ai" data-act="ai" aria-label="Perguntar ao assistente">${UXI.ai}<span>Assistente</span></button>` : ''}</div>
     ${ti && ti.lessons.length ? teacher + hero : hero + teacher}
     ${contCard}
     ${hw}
@@ -513,8 +515,9 @@ function renderHoje(){
     <div style="--d:6" class="hj-metro">${metroHTML()}</div>`;
 }
 app.addEventListener('click', e => {
-  const a = e.target.closest('[data-act="search"],[data-act="look"],[data-ux]'); if (!a) return;
+  const a = e.target.closest('[data-act="search"],[data-act="look"],[data-act="ai"],[data-ux]'); if (!a) return;
   if (a.dataset.act === 'search') return openSearch();
+  if (a.dataset.act === 'ai') return aiOpen();
   if (a.dataset.act === 'look') return openLook();
   const k = a.dataset.ux, v = a.dataset.v;
   if (k === 'pair'){ const [x, y] = v.split('|'); openTrainer(x, y); }
@@ -574,9 +577,9 @@ practHTML = function(){ const h = _practHTML(); return weekMins() >= (pract.goal
 /* ---------- folhas: no celular sobem de baixo e fecham puxando ---------- */
 let dg = null;
 document.addEventListener('pointerdown', e => {
-  if (e.button > 0) return; const h = e.target.closest('.sheet-head, .hb-head, .ux-grab-zone, .ux-sh-head, .ux-sh-title'); if (!h) return;
+  if (e.button > 0) return; const h = e.target.closest('.sheet-head, .hb-head, .ux-grab-zone, .ux-sh-head, .ux-sh-title, .ai-head'); if (!h) return;
   if (e.target.closest('button,input,select,textarea,a,label')) return;
-  const sheet = h.closest('.sheet, .hb-sheet, .ux-sheet'); if (!sheet) return;
+  const sheet = h.closest('.sheet, .hb-sheet, .ux-sheet, .ai-sheet'); if (!sheet) return;
   if (sheet.classList.contains('sheet') && (!matchMedia('(max-width:640px)').matches || view.sheet === 'editor')) return;
   dg = { sheet, y0: e.clientY, t0: performance.now(), dy: 0, id: e.pointerId };
 });
@@ -594,6 +597,7 @@ function dgEnd(e){
     setTimeout(() => { d.sheet.style.transform = ''; d.sheet.style.transition = '';
       if (d.sheet.classList.contains('hb-sheet')) window.FluidHub && window.FluidHub.close();
       else if (d.sheet.classList.contains('ux-sheet')) uxSheetClose(true);
+      else if (d.sheet.classList.contains('ai-sheet')) { document.getElementById('ai-chat')?.remove(); document.body.classList.remove('ai-on'); }
       else { if (view.sheet === 'lesson') led = null; closeSheet(); } }, 260);
   } else { d.sheet.style.transform = ''; setTimeout(() => { d.sheet.style.transition = ''; }, 320); }
 }
@@ -606,13 +610,14 @@ window.addEventListener('keydown', e => {
     if (document.getElementById('ux-search')){ e.stopImmediatePropagation(); e.preventDefault(); return closeSearch(true); }
     if (document.getElementById('ux-fab')){ e.stopImmediatePropagation(); return fabClose(); }
     if (document.getElementById('ux-sheet')){ e.stopImmediatePropagation(); return uxSheetClose(); }
+    if (document.getElementById('ai-chat') && !pop.chord){ e.stopImmediatePropagation(); return aiClose(); }
   }
   if (((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing && !view.sheet && !practice && !trainer)){ e.preventDefault(); openSearch(true); }
 }, true);
 
 /* ================= NAVEGAÇÃO VIVA ================= */
 const touchy = () => window.matchMedia && matchMedia('(hover: none)').matches;
-function layerOpen(){ return !!(view.sheet || (practice && !practice.mini) || trainer || pop.chord || document.querySelector('#ux-search,#ux-fab,#ux-sheet,#tuner,.cele') || (window.FluidHub && window.FluidHub.isOpen && window.FluidHub.isOpen())); }
+function layerOpen(){ return !!(view.sheet || (practice && !practice.mini) || trainer || pop.chord || document.querySelector('#ux-search,#ux-fab,#ux-sheet,#tuner,.cele,#ai-chat') || (window.FluidHub && window.FluidHub.isOpen && window.FluidHub.isOpen())); }
 
 /* ---------- a barra some ao rolar para baixo e volta ao rolar para cima ---------- */
 let lastY = window.scrollY, dockHidden = false, scrollRaf = 0;
@@ -796,6 +801,8 @@ document.addEventListener('touchend', async () => {
 /* ---------- botão voltar do celular fecha a camada aberta ---------- */
 let histOn = false, ignorePop = 0;
 function closeTop(){
+  if (pop.chord && document.getElementById('ai-chat')) return closePop();
+  if (document.getElementById('ai-chat')) return aiClose();
   if (document.getElementById('ux-search')) return closeSearch();
   if (document.getElementById('ux-fab')) return fabClose();
   if (document.getElementById('ux-sheet')) return uxSheetClose();
@@ -916,4 +923,192 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape' && rd){ e.stopI
 ['gesturestart','gesturechange'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
 document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 let lastTouchEnd = 0; document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTouchEnd < 300 && !e.target.closest('input,textarea,select,button,a,[data-swipe]')) e.preventDefault(); lastTouchEnd = n; }, { passive: false });
+
+/* ================= ASSISTENTE (chat com IA que orienta, responde e organiza) ================= */
+UXI.ai = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l1.7 4.6 4.6 1.7-4.6 1.7L12 16.1l-1.7-4.6L5.7 9.8l4.6-1.7z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>';
+UXI.sendUp = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg>';
+UXI.stop = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></svg>';
+const AI = { sample: null, ready: false, busy: false, ctl: null, msgs: [], undo: {} };
+const AIK = () => 'fluid.chat.' + ((window.FluidWeb && window.FluidWeb.current && (window.FluidWeb.current() || {}).id) || 'local');
+function aiLoad(){ AI.msgs = (lsGet(AIK(), []) || []).slice(-40); }
+function aiSave(){ lsSet(AIK(), AI.msgs.slice(-40).map(m => ({ role: m.role, text: m.text, acts: m.acts, btns: m.btns, err: m.err }))); }
+(async () => { try { const s = window.claude && window.claude.use ? await window.claude.use('sample') : null; if (!s) return; let lim = null; try { lim = await s.limits(); } catch(e){}
+  AI.sample = s; AI.tools = !!(lim && lim.tools); AI.ready = true; try { render(); } catch(e){} } catch(e){} })();
+
+/* contexto do caderno: só o que importa, em texto compacto */
+function aiContext(){
+  const num = view.display === 'num';
+  const ch = c => { const n = detect(c); const code = codeOf(c); return (n && n !== '?' ? n : 'acorde sem nome') + (code ? ' (' + code + ')' : ''); };
+  const sg = songs.slice(0, 60).map(s => ({ id: s.id, titulo: s.title || 'Sem título', artista: s.artist || '', capo: s.capo || 0, bpm: s.bpm || null, compasso: s.meter || '4/4', pastilhas: s.tags || [],
+    acordes: (s.chords || []).map(ch), batida: fitStrum(s.strum, s.meter || '4/4').map(x => GLYPH[x]).join(' ').trim(), tem_letra: !!(s.lyrics || '').trim(), notas: (s.notes || '').slice(0, 200), pronta: isReady(s) }));
+  const ls = lessons.slice(0, 8).map(l => ({ id: l.id, data: l.date, resumo: (l.summary || '').slice(0, 300), prazo_licao: l.hwDue || null,
+    licao: (l.homework || []).map((h, i) => ({ i, texto: h.t, feita: !!h.done })).filter(h => h.texto),
+    duvidas: (l.questions || []).map((q, i) => ({ i, texto: q.t, respondida: !!q.done })).filter(q => q.texto),
+    musicas: (l.songs || []).map(id => (songs.find(s => s.id === id) || {}).title).filter(Boolean) }));
+  const pairs = suggestedPairs().slice(0, 10).map(p => ({ troca: p.a + ' → ' + p.b, recorde_por_minuto: bestOf(p.k), musicas: p.songs.slice(0, 3) }));
+  const me = window.FluidWeb && window.FluidWeb.me ? window.FluidWeb.me() : null;
+  const ctx = { hoje: todayLocal(), dia_da_semana: new Date().toLocaleDateString('pt-BR', { weekday: 'long' }), nome: me ? me.name : '', exibicao_dos_acordes: num ? 'números (corda+casa)' : 'cifra',
+    acordes_que_ja_sabe: (progress.mastered || []).slice(0, 60), treino: { dias_seguidos: streakNow(), minutos_hoje: minsOn(todayLocal()), minutos_semana: weekMins(), meta_semana: pract.goal || 90 },
+    trocas: pairs, musicas: sg, aulas: ls };
+  const t = window.FluidHub && window.FluidHub.aiSnapshot ? window.FluidHub.aiSnapshot() : null; if (t) ctx.professor = t;
+  let s = JSON.stringify(ctx); if (s.length > 60000) { ctx.musicas = sg.slice(0, 25); s = JSON.stringify(ctx); }
+  return s;
+}
+const AI_RULES = () => `Você é o assistente do Fluid, um caderno de violão para alunos e professores. Pense como um professor de violão experiente e paciente, com sólida formação em teoria musical, harmonia, ritmo, técnica de mão direita e esquerda e didática.
+
+Como responder:
+- Português do Brasil, tom caloroso e direto, frases curtas. Responda primeiro o que foi perguntado; depois, se ajudar, um próximo passo prático.
+- Nunca use negrito (nada de ** ou __) e nunca use travessão (—); use vírgulas, dois-pontos ou parênteses. Listas com "- " e passos numerados são bem-vindos quando ajudam.
+- Notação do professor: cada posição é corda+casa, com a corda primeiro (1 = mi agudo, 6 = mi grave). Ex.: Lá menor = 21-32-42 (corda 2 casa 1, corda 3 casa 2, corda 4 casa 2). Sempre que citar um acorde, escreva o nome entre colchetes duplos, assim: [[Am]], e quando útil mostre também o código. O app transforma [[Am]] num botão com o desenho do acorde. Para formas fora do padrão, use o código: [[21-32-42]].
+- Seja musicalmente correto. Confira tonalidade, função harmônica, campo harmônico, capotraste (com capo na casa N o som sobe N semitons) e contagem de compasso antes de afirmar. Se não tiver certeza, diga e explique como verificar no violão. Não invente acordes de uma música famosa se não tiver certeza: prefira pedir a cifra ao aluno ou ao professor.
+- Use os dados do caderno abaixo para personalizar (músicas, acordes que já sabe, trocas mais lentas, lições pendentes, minutos de treino). Não invente músicas, aulas nem números que não estão aí.
+- Sobre o app: dá para colar a mensagem do professor (botão +), treinar trocas de 1 minuto, praticar com metrônomo, afinar, gravar-se, registrar aulas, lições e dúvidas.
+
+${AI.tools ? '' : 'Neste aparelho você não consegue executar ações no caderno: quando pedirem para criar ou organizar algo, explique em passos curtos como fazer no app.\n\n'}Ações (ferramentas):
+- Quando a pessoa pedir para criar, anotar, organizar, registrar ou mudar algo, use as ferramentas e depois diga em uma frase o que foi feito. Use só ids que aparecem nos dados. Se faltar informação essencial (ex.: qual música), pergunte antes em vez de adivinhar.
+- Não faça ações que não foram pedidas ou claramente implícitas. Para abrir telas, use a ferramenta abrir (ela cria um botão para a pessoa tocar).
+- Tudo o que você fizer aparece com um botão Desfazer, então seja preciso.
+
+Dados atuais do caderno (JSON):
+${aiContext()}`;
+
+/* ferramentas que rodam aqui no app */
+function aiTools(msg){
+  const done = (label, undo) => { const id = 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); AI.undo[id] = undo; msg.acts = [...(msg.acts || []), { id, label }]; aiPaint(); return 'ok'; };
+  const songById = id => { const s = songs.find(x => x.id === String(id)); if (!s) throw new Error('Música não encontrada: use um id dos dados'); return s; };
+  const toChord = v => { const c = parseChordInput(String(v)); if (!c) throw new Error('Acorde não reconhecido: ' + v + '. Use nome (Am, G7, F#m) ou código corda+casa (21-32-42).'); if (!/^[\d\s\-,]+$/.test(String(v).trim())) c.name = normName(String(v)); return c; };
+  const lastLesson = () => lessons[0];
+  const S = (props, req) => ({ type: 'object', properties: props, required: req || [] });
+  return [
+    { name: 'criar_musica', description: 'Cria uma música nova no caderno. Retorna o id criado.', inputSchema: S({ titulo: { type: 'string' }, artista: { type: 'string' }, capo: { type: 'integer' }, bpm: { type: 'integer' }, compasso: { type: 'string', enum: ['4/4', '3/4', '6/8', '2/4'] }, acordes: { type: 'array', items: { type: 'string' }, description: 'Na ordem da música. Nome (Am) ou código corda+casa (21-32-42).' }, batida: { type: 'string', description: 'Setas, ex.: "↓ ↓↑ ↑↓↑"' }, notas: { type: 'string' }, pastilhas: { type: 'array', items: { type: 'string' } } }, ['titulo']),
+      execute: i => { const s = blankSong(); s.title = String(i.titulo || 'Sem título').slice(0, 80); s.artist = String(i.artista || ''); s.capo = Math.max(0, Math.min(12, +i.capo || 0)); s.bpm = i.bpm ? Math.max(30, Math.min(260, +i.bpm)) : null; if (i.compasso) s.meter = String(i.compasso);
+        s.chords = (i.acordes || []).map(toChord); const st = i.batida ? parseStrumText(String(i.batida)) : null; if (st) s.strum = st; s.notes = String(i.notas || ''); s.tags = (i.pastilhas || []).map(String).filter(Boolean);
+        saveSong(s); return done('Criei a música "' + s.title + '"', () => deleteSong(s.id)) && { id: s.id }; } },
+    { name: 'editar_musica', description: 'Muda campos de uma música existente. Só envie os campos que mudam. acordes substitui a sequência inteira.', inputSchema: S({ id: { type: 'string' }, titulo: { type: 'string' }, artista: { type: 'string' }, capo: { type: 'integer' }, bpm: { type: 'integer' }, compasso: { type: 'string' }, acordes: { type: 'array', items: { type: 'string' } }, batida: { type: 'string' }, notas: { type: 'string' }, pastilhas: { type: 'array', items: { type: 'string' } } }, ['id']),
+      execute: i => { const s = songById(i.id), prev = JSON.parse(JSON.stringify(s)), n = JSON.parse(JSON.stringify(s));
+        if (i.titulo != null) n.title = String(i.titulo); if (i.artista != null) n.artist = String(i.artista); if (i.capo != null) n.capo = Math.max(0, Math.min(12, +i.capo || 0)); if (i.bpm != null) n.bpm = +i.bpm || null; if (i.compasso) n.meter = String(i.compasso);
+        if (Array.isArray(i.acordes)){ n.chords = i.acordes.map(toChord); n.lmarks = {}; } if (i.batida){ const st = parseStrumText(String(i.batida)); if (st) n.strum = st; } if (i.notas != null) n.notes = String(i.notas); if (Array.isArray(i.pastilhas)) n.tags = i.pastilhas.map(String);
+        saveSong(n); return done('Atualizei "' + (n.title || 'a música') + '"', () => saveSong(prev)); } },
+    { name: 'anotar_duvida', description: 'Anota uma dúvida para levar na próxima aula.', inputSchema: S({ texto: { type: 'string' } }, ['texto']),
+      execute: i => { const l = lastLesson(); if (!l) throw new Error('Não há aula registrada. Use registrar_aula primeiro.'); const prev = JSON.parse(JSON.stringify(l));
+        saveLesson({ ...l, questions: [...(l.questions || []).map(x => ({ ...x })), { t: String(i.texto).slice(0, 200), done: false }] }); render(); return done('Anotei a dúvida: ' + String(i.texto).slice(0, 60), () => { saveLesson(prev); render(); }); } },
+    { name: 'adicionar_licao', description: 'Adiciona um item de lição de casa na aula mais recente (ou em lesson_id). prazo opcional AAAA-MM-DD.', inputSchema: S({ texto: { type: 'string' }, prazo: { type: 'string' }, lesson_id: { type: 'string' } }, ['texto']),
+      execute: i => { const l = i.lesson_id ? lessons.find(x => x.id === String(i.lesson_id)) : lastLesson(); if (!l) throw new Error('Não há aula registrada. Use registrar_aula.'); const prev = JSON.parse(JSON.stringify(l));
+        const nl = { ...l, homework: [...(l.homework || []).filter(h => h.t).map(x => ({ ...x })), { t: String(i.texto).slice(0, 200), done: false }] }; if (i.prazo && /^\d{4}-\d{2}-\d{2}$/.test(String(i.prazo))) nl.hwDue = String(i.prazo);
+        saveLesson(nl); render(); return done('Adicionei à lição: ' + String(i.texto).slice(0, 60), () => { saveLesson(prev); render(); }); } },
+    { name: 'registrar_aula', description: 'Registra uma aula (padrão: hoje) com resumo, lição de casa, dúvidas e músicas (ids).', inputSchema: S({ data: { type: 'string' }, resumo: { type: 'string' }, licao: { type: 'array', items: { type: 'string' } }, duvidas: { type: 'array', items: { type: 'string' } }, musicas: { type: 'array', items: { type: 'string' } }, prazo_licao: { type: 'string' } }),
+      execute: i => { const l = { id: 'l' + uid().slice(1), date: /^\d{4}-\d{2}-\d{2}$/.test(String(i.data || '')) ? String(i.data) : todayLocal(), summary: String(i.resumo || ''), homework: (i.licao || []).map(t => ({ t: String(t), done: false })), questions: (i.duvidas || []).map(t => ({ t: String(t), done: false })), songs: (i.musicas || []).map(String).filter(id => songs.some(s => s.id === id)), createdAt: new Date().toISOString() };
+        if (i.prazo_licao) l.hwDue = String(i.prazo_licao); saveLesson(l); render(); return done('Registrei a aula de ' + dateParts(l.date).d + ' ' + dateParts(l.date).mon, () => { deleteLesson(l.id); render(); }) && { id: l.id }; } },
+    { name: 'marcar_licao', description: 'Marca um item da lição (ou dúvida) como feito ou não. tipo: licao ou duvida; i = índice do item nos dados.', inputSchema: S({ lesson_id: { type: 'string' }, tipo: { type: 'string', enum: ['licao', 'duvida'] }, i: { type: 'integer' }, feito: { type: 'boolean' } }, ['lesson_id', 'i']),
+      execute: i => { const l = lessons.find(x => x.id === String(i.lesson_id)); if (!l) throw new Error('Aula não encontrada'); const k = i.tipo === 'duvida' ? 'questions' : 'homework'; const arr = (l[k] || []).map(x => ({ ...x })); const it = arr[+i.i]; if (!it) throw new Error('Item não encontrado');
+        const was = !!it.done; it.done = i.feito !== false; saveLesson({ ...l, [k]: arr }); render(); return done((it.done ? 'Marquei como feito: ' : 'Reabri: ') + it.t.slice(0, 50), () => { const l2 = lessons.find(x => x.id === l.id); if (!l2) return; const a2 = (l2[k] || []).map(x => ({ ...x })); if (a2[+i.i]) a2[+i.i].done = was; saveLesson({ ...l2, [k]: a2 }); render(); }); } },
+    { name: 'marcar_acorde', description: 'Marca um acorde (nome) como já sei ou ainda aprendendo.', inputSchema: S({ acorde: { type: 'string' }, sei: { type: 'boolean' } }, ['acorde']),
+      execute: i => { const n = normName(String(i.acorde)), was = isMastered(n), on = i.sei !== false; setMastered(n, on); render(); return done((on ? 'Marquei que você sabe ' : 'Voltei para aprendendo: ') + n, () => { setMastered(n, was); render(); }); } },
+    { name: 'meta_semanal', description: 'Define a meta de minutos de treino por semana.', inputSchema: S({ minutos: { type: 'integer' } }, ['minutos']),
+      execute: i => { const prev = pract.goal || 90, m = Math.max(15, Math.min(1200, +i.minutos || 90)); pract.goal = m; practSave(); updatePractCard(); render(); return done('Meta da semana: ' + m + ' minutos', () => { pract.goal = prev; practSave(); render(); }); } },
+    { name: 'abrir', description: 'Cria um botão para a pessoa abrir uma tela. alvo: musica, praticar (metrônomo com a música), trocas (par de acordes a e b), afinador, metronomo, aulas, financeiro, agenda, alunos.', inputSchema: S({ alvo: { type: 'string', enum: ['musica', 'praticar', 'trocas', 'afinador', 'metronomo', 'aulas', 'financeiro', 'agenda', 'alunos'] }, id: { type: 'string' }, a: { type: 'string' }, b: { type: 'string' }, rotulo: { type: 'string', description: 'Texto curto do botão' } }, ['alvo']),
+      execute: i => { if ((i.alvo === 'musica' || i.alvo === 'praticar') && !songs.some(s => s.id === String(i.id))) throw new Error('id de música inválido');
+        msg.btns = [...(msg.btns || []), { alvo: String(i.alvo), id: i.id ? String(i.id) : '', a: i.a ? normName(String(i.a)) : '', b: i.b ? normName(String(i.b)) : '', rotulo: String(i.rotulo || '').slice(0, 40) }]; aiPaint(); return 'botão criado'; } },
+  ];
+}
+function aiGo(b){
+  const s = b.id && songs.find(x => x.id === b.id);
+  if (b.alvo === 'musica' && s){ aiClose(); openSong(s.id); }
+  if (b.alvo === 'praticar' && s){ aiClose(); openPractice(s); }
+  if (b.alvo === 'trocas' && b.a && b.b){ aiClose(); openTrainer(b.a, b.b); }
+  if (b.alvo === 'afinador'){ aiClose(); openTuner(); }
+  if (b.alvo === 'metronomo'){ aiClose(); metro.open = true; goTab('treino'); setTimeout(() => document.getElementById('metro')?.scrollIntoView({ behavior:'smooth', block:'center' }), 120); }
+  if (b.alvo === 'aulas'){ aiClose(); goTab('aulas'); }
+  if (['financeiro','agenda','alunos'].includes(b.alvo) && window.FluidHub){ aiClose(); window.FluidHub.open(b.alvo); }
+}
+const BTN_LABEL = b => b.rotulo || ({ musica: 'Abrir música', praticar: 'Praticar com metrônomo', trocas: 'Treinar ' + b.a + ' → ' + b.b, afinador: 'Abrir o afinador', metronomo: 'Abrir o metrônomo', aulas: 'Ver aulas', financeiro: 'Abrir o financeiro', agenda: 'Abrir a agenda', alunos: 'Ver alunos' })[b.alvo] || 'Abrir';
+
+/* texto da resposta: parágrafos, listas e acordes clicáveis */
+function aiHTML(t){
+  const chip = raw => { const v = raw.trim(); const isCode = /^[\d\s\-]+$/.test(v); const sh = isCode ? parseCode(v) : (shapeFor[normName(v)] || chordFromName(v)); const nm = isCode ? (sh ? detect(sh) : v) : normName(v);
+    return sh ? `<button class="ai-ch" data-ai-ch="${esc(isCode ? v : nm)}"><b>${esc(isCode ? v : nm)}</b>${!isCode && codeOf(sh) ? `<small>${esc(codeOf(sh))}</small>` : isCode && nm && nm !== '?' ? `<small>${esc(nm)}</small>` : ''}</button>` : esc(raw); };
+  const inline = s => esc(s).replace(/\*\*|__/g, '').replace(/\[\[([^\]]{1,24})\]\]/g, (m, x) => chip(x.replace(/&amp;/g,'&').replace(/&#39;/g,"'"))).replace(/`([^`]+)`/g, '<code>$1</code>');
+  const lines = String(t || '').replace(/—/g, ',').split('\n'); let out = '', list = null;
+  const close = () => { if (list){ out += `</${list}>`; list = null; } };
+  lines.forEach(l => { const m = l.match(/^\s*[-•*]\s+(.*)$/), n = l.match(/^\s*(\d+)[.)]\s+(.*)$/), h = l.match(/^#{1,4}\s+(.*)$/);
+    if (m){ if (list !== 'ul'){ close(); out += '<ul>'; list = 'ul'; } out += `<li>${inline(m[1])}</li>`; }
+    else if (n){ if (list !== 'ol'){ close(); out += '<ol>'; list = 'ol'; } out += `<li>${inline(n[2])}</li>`; }
+    else if (h){ close(); out += `<p class="ai-h">${inline(h[1])}</p>`; }
+    else if (!l.trim()){ close(); }
+    else { close(); out += `<p>${inline(l)}</p>`; } });
+  close(); return out;
+}
+function aiSuggest(){
+  const ti = window.FluidHub && window.FluidHub.aiSnapshot ? window.FluidHub.aiSnapshot() : null;
+  const s = songs[0], f = songs.length ? focusPick() : null, open = pendingCount();
+  return [
+    songs.length ? 'O que eu treino hoje com o tempo que tenho?' : 'Como eu começo a usar o Fluid?',
+    f ? `Como deixar a troca ${f.a} → ${f.b} mais rápida?` : 'Me explica o campo harmônico de Dó maior',
+    s ? `Monte um plano de 20 minutos para ${s.title || 'minha música'}` : 'Quais são os acordes básicos para começar?',
+    open ? 'Organiza minhas lições pendentes por prioridade' : 'Anota uma dúvida para a próxima aula',
+    ti ? 'Quem está com mensalidade atrasada e o que eu mando para cada um?' : 'Qual a diferença entre acorde maior e menor?',
+  ];
+}
+function aiOpen(prefill){
+  if (!AI.ready){ toast('O assistente ainda não está disponível aqui'); return; }
+  if (document.getElementById('ai-chat')) return; aiLoad(); fabClose(); closeSearch(true);
+  const el = document.createElement('div'); el.id = 'ai-chat'; el.className = 'ux-layer ai-layer';
+  el.innerHTML = `<div class="ux-scrim" data-ai="close"></div><section class="ai-sheet" role="dialog" aria-modal="true" aria-label="Assistente do Fluid">
+    <header class="ai-head"><i class="ux-grab ai-grab" aria-hidden="true"></i><span class="ai-badge" aria-hidden="true">${UXI.ai}</span><div class="ai-ttl"><b>Assistente</b><small>Tira dúvidas, orienta o treino e organiza o caderno</small></div>
+      <button class="btn icon ghost" data-ai="new" aria-label="Nova conversa" title="Nova conversa">${UXI.edit}</button><button class="btn icon ghost" data-ai="close" aria-label="Fechar">${I.close}</button></header>
+    <div class="ai-body" id="ai-body" aria-live="polite"></div>
+    <form class="ai-bar" id="ai-form"><textarea id="ai-in" rows="1" placeholder="Pergunte ou peça algo…" aria-label="Mensagem para o assistente" enterkeyhint="send"></textarea><button class="ai-send" type="submit" aria-label="Enviar">${UXI.sendUp}</button></form>
+  </section>`;
+  document.body.appendChild(el); document.body.classList.add('ai-on');
+  const inp = el.querySelector('#ai-in');
+  const grow = () => { inp.style.height = 'auto'; inp.style.height = Math.min(140, inp.scrollHeight) + 'px'; };
+  inp.addEventListener('input', grow);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(hover: hover)').matches){ e.preventDefault(); el.querySelector('#ai-form').requestSubmit(); } });
+  el.querySelector('#ai-form').onsubmit = e => { e.preventDefault(); if (AI.busy){ AI.ctl && AI.ctl.abort(); return; } const v = inp.value.trim(); if (!v) return; inp.value = ''; grow(); aiAsk(v); };
+  el.addEventListener('click', e => {
+    const c = e.target.closest('[data-ai]'); if (c){ const k = c.dataset.ai;
+      if (k === 'close') return aiClose();
+      if (k === 'new'){ if (AI.busy) AI.ctl && AI.ctl.abort(); AI.msgs = []; aiSave(); aiPaint(); inp.focus(); return; }
+      if (k === 'sug'){ aiAsk(c.textContent); return; }
+      if (k === 'undo'){ const f = AI.undo[c.dataset.id]; if (f){ try { f(); } catch(err){} delete AI.undo[c.dataset.id]; AI.msgs.forEach(m => (m.acts || []).forEach(a => { if (a.id === c.dataset.id) a.undone = true; })); aiSave(); aiPaint(); uiSound('undo'); hap('undo'); } return; }
+      if (k === 'go'){ const m = AI.msgs[+c.dataset.m], b = m && (m.btns || [])[+c.dataset.b]; if (b) aiGo(b); return; }
+      if (k === 'retry'){ const last = [...AI.msgs].reverse().find(m => m.role === 'user'); if (last){ AI.msgs = AI.msgs.filter(m => !(m.role === 'assistant' && m.err)); aiAsk(null); } return; }
+    }
+    const ch = e.target.closest('[data-ai-ch]'); if (ch){ const v = ch.dataset.aiCh; const sh = /^[\d\s\-]+$/.test(v) ? parseCode(v) : null; const nm = sh ? detect(sh) : v;
+      if (nm && nm !== '?') showPop(nm); else if (sh){ try { playArpeggio(sh, 0); } catch(err){} } }
+  });
+  aiPaint(); setTimeout(() => { if (prefill) aiAsk(prefill); else inp.focus({ preventScroll: true }); }, 60);
+}
+function aiClose(){ const el = document.getElementById('ai-chat'); document.body.classList.remove('ai-on'); if (!el) return; if (reduceMotion()){ el.remove(); return; } el.classList.add('out'); setTimeout(() => el.remove(), 200); }
+function aiPaint(){
+  const body = document.getElementById('ai-body'); if (!body) return; const atEnd = body.scrollHeight - body.scrollTop - body.clientHeight < 80;
+  if (!AI.msgs.length){ body.innerHTML = `<div class="ai-hello"><span class="ai-badge big" aria-hidden="true">${UXI.ai}</span><h3>Oi${window.FluidWeb && window.FluidWeb.me ? ', ' + esc((window.FluidWeb.me().name || '').split(' ')[0]) : ''}! Como posso ajudar no violão hoje?</h3>
+      <p>Pergunte sobre acordes, ritmo, teoria ou técnica. Também posso montar seu treino, anotar dúvidas, registrar aulas e criar músicas no caderno.</p>
+      <div class="ai-sugs">${aiSuggest().map(s => `<button class="ai-sug" data-ai="sug">${esc(s)}</button>`).join('')}</div></div>`; return; }
+  body.innerHTML = AI.msgs.map((m, mi) => m.role === 'user' ? `<div class="ai-msg me"><p>${esc(m.text)}</p></div>`
+    : `<div class="ai-msg bot${m.pending ? ' pending' : ''}">${m.text ? aiHTML(m.text) : `<p class="ai-think">${m.status ? esc(m.status) : 'Pensando…'}</p>`}
+      ${(m.acts || []).length ? `<div class="ai-acts">${m.acts.map(a => `<div class="ai-act${a.undone ? ' undone' : ''}"><span class="ai-ok" aria-hidden="true">${UXI.check}</span><span>${esc(a.label)}${a.undone ? ' (desfeito)' : ''}</span>${a.undone || !AI.undo[a.id] ? '' : `<button data-ai="undo" data-id="${a.id}">Desfazer</button>`}</div>`).join('')}</div>` : ''}
+      ${(m.btns || []).length ? `<div class="ai-btns">${m.btns.map((b, bi) => `<button class="btn" data-ai="go" data-m="${mi}" data-b="${bi}">${I.play}${esc(BTN_LABEL(b))}</button>`).join('')}</div>` : ''}
+      ${m.err ? `<p class="ai-err">${esc(m.err)} <button class="linkish" data-ai="retry">Tentar de novo</button></p>` : ''}</div>`).join('');
+  if (atEnd || AI.busy) body.scrollTop = body.scrollHeight;
+  const send = document.querySelector('#ai-form .ai-send'); if (send){ send.innerHTML = AI.busy ? UXI.stop : UXI.sendUp; send.setAttribute('aria-label', AI.busy ? 'Parar' : 'Enviar'); send.classList.toggle('stop', AI.busy); }
+}
+async function aiAsk(text){
+  if (AI.busy || !AI.sample) return;
+  if (text) AI.msgs.push({ role: 'user', text: String(text).slice(0, 2000) });
+  const msg = { role: 'assistant', text: '', pending: true, acts: [], btns: [] }; AI.msgs.push(msg);
+  AI.busy = true; AI.ctl = new AbortController(); aiPaint(); hap('tick');
+  const hist = AI.msgs.filter(m => m !== msg && (m.role === 'user' || (m.text && !m.err))).slice(-16).map(m => ({ role: m.role, content: m.text + ((m.acts || []).length ? '\n\n[Ações feitas: ' + m.acts.map(a => a.label + (a.undone ? ' (desfeita)' : '')).join('; ') + ']' : '') }));
+  while (hist.length && hist[0].role !== 'user') hist.shift();
+  const input = [{ role: 'user', content: AI_RULES() }, ...hist];
+  try {
+    const opts = { signal: AI.ctl.signal, onText: ({ text }) => { msg.text = text; aiPaint(); } };
+    if (AI.tools) opts.tools = aiTools(msg); else opts.cache = false;
+    const r = await AI.sample(input, opts); msg.text = r.text || msg.text;
+  } catch(e){
+    msg.text = e && e.text || msg.text;
+    if (!e || e.code !== 'cancelled') msg.err = ({ rate_limited: 'Muitas perguntas seguidas. Espere um pouco.', not_granted: 'O uso da IA não foi permitido.', sampling_disabled: 'A IA não está disponível nesta conta.', refused: 'Não posso ajudar com isso.', session_expired: 'Entre de novo na sua conta.' })[e && e.code] || 'Não consegui responder agora.';
+    if (e && (e.code === 'not_granted' || e.code === 'sampling_disabled')) AI.ready = false;
+  } finally { msg.pending = false; AI.busy = false; AI.ctl = null; aiSave(); aiPaint(); }
+}
 /* ================= FIM UX ================= */

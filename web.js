@@ -337,7 +337,34 @@
     if (!r.ok) throw { code: 'upstream_error' };
     return { payload: await r.json() };
   } };
-  const sampleShim = async () => { throw { code: 'unsupported' }; };
+  // conversa com ferramentas: o laço roda aqui no app, cada rodada passa pela função /api/chat
+  const sampleShim = async (input, opts = {}) => {
+    const turns = typeof input === 'string' ? [{ role: 'user', content: input }] : input.map(t => ({ role: t.role, content: t.content }));
+    const msgs = []; turns.forEach(t => { const last = msgs[msgs.length - 1]; if (last && last.role === t.role && typeof last.content === 'string') last.content += '\n\n' + t.content; else msgs.push({ role: t.role, content: t.content }); });
+    const tools = (opts.tools || []).map(t => ({ name: t.name, description: t.description, input_schema: t.inputSchema || { type: 'object', properties: {} } }));
+    let text = '';
+    for (let round = 0; round < 6; round++){
+      if (opts.signal && opts.signal.aborted) throw { code: 'cancelled', text };
+      const r = await fetch('/api/chat', { method: 'POST', signal: opts.signal, headers: { 'Content-Type': 'application/json', ...(await authHeader()) }, body: JSON.stringify({ messages: msgs, tools: round < 5 ? tools : [] }) }).catch(e => { throw { code: e && e.name === 'AbortError' ? 'cancelled' : 'upstream_error', text }; });
+      if (r.status === 429) throw { code: 'rate_limited', text };
+      if (r.status === 503) throw { code: 'sampling_disabled', text };
+      if (!r.ok) throw { code: 'upstream_error', text };
+      const j = await r.json(); const content = j.content || [];
+      const said = content.filter(c => c.type === 'text').map(c => c.text).join('');
+      if (said){ text += (text ? '\n\n' : '') + said; opts.onText && opts.onText({ text, delta: said }); }
+      const uses = content.filter(c => c.type === 'tool_use');
+      if (!uses.length || j.stop_reason !== 'tool_use') break;
+      msgs.push({ role: 'assistant', content });
+      const results = [];
+      for (const u of uses){ const t = (opts.tools || []).find(x => x.name === u.name); let out, err = false;
+        try { out = t ? await t.execute(u.input || {}, { signal: opts.signal || new AbortController().signal }) : 'Ferramenta desconhecida'; } catch(e){ out = 'Error: ' + ((e && e.message) || e); err = true; }
+        results.push({ type: 'tool_result', tool_use_id: u.id, content: typeof out === 'string' ? out : JSON.stringify(out ?? 'ok'), is_error: err }); }
+      msgs.push({ role: 'user', content: results });
+    }
+    if (!text) throw { code: 'empty_completion' };
+    return { text, truncated: false, modelTierApplied: 'default' };
+  };
+  sampleShim.limits = async () => ({ maxPromptBytes: 262144, tools: { maxCount: 20 } });
   sampleShim.json = async (prompt) => {
     const r = await fetch('/api/interpret', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await authHeader()) }, body: JSON.stringify({ prompt }) });
     if (r.status === 429) throw { code: 'rate_limited' };

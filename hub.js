@@ -1284,6 +1284,15 @@
     newStudent(){ open('alunos'); go({ type:'sform', draft:{} }); },
     quickPay,
     isOpen(){ return st.open; },
+    aiSnapshot(){
+      if (!st.loaded || !st.students.length) return null; const t = today();
+      return { hoje: t, alunos: st.students.map(s => ({ nome: s.name, status: s.status === 'paused' ? 'pausado' : 'ativo', aulas: scheduleText(s), mensalidade: brl(s.fee), vencimento_dia: s.due_day, situacao: studentPayState(s) === 'late' ? 'em atraso' : studentPayState(s) === 'soon' ? 'vence logo' : 'em dia', tem_pasta: !!s.notebook_id })),
+        aulas_hoje: slotsOn(t).map(x => ({ aluno: x.s.name, hora: String(x.time || '').slice(0,5), status: x.a ? x.a.status : 'agendada' })),
+        atrasadas: st.payments.filter(p => payStatus(p) === 'late').map(p => ({ aluno: (studentById(p.student_id) || {}).name, valor: brl(p.amount), venceu: fullDate(p.due_date) })),
+        proximas_30_dias: upcoming(30).map(p => ({ aluno: (studentById(p.student_id) || {}).name, valor: brl(p.amount), vence: fullDate(p.due_date) })),
+        recebido_mes: brl(st.payments.filter(p => p.paid_at && ymOf(p.paid_at) === ymOf(t)).reduce((x, p) => x + (Number(p.amount) || 0), 0)),
+        interessados_novos: (st.leads || []).filter(l => !l.seen).map(l => ({ nome: l.name, mensagem: l.message })) };
+    },
     back(){ if (st.view) back(); else close(); },
     async refresh(){ if (!st.students.length && !st.loaded) return; await loadTeacher(); if (st.students.length) await loadExtras(); draw(); },
     chipHTML(){
