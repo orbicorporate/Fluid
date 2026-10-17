@@ -831,4 +831,85 @@ addEventListener('popstate', () => {
     if (a === 'buscar') openSearch(); };
   setTimeout(run, 600);
 })();
+
+/* ================= REORDENAR ACORDES (segurar e arrastar, com botões como alternativa) ================= */
+function chordsReorder(s, order){ // order: lista de índices antigos na nova ordem
+  const prev = { chords: JSON.parse(JSON.stringify(s.chords||[])), lmarks: JSON.parse(JSON.stringify(s.lmarks||{})) };
+  const inv = {}; order.forEach((old, k) => { inv[old] = k; });
+  const s2 = JSON.parse(JSON.stringify(s)); s2.chords = order.map(i => prev.chords[i]);
+  const lm = {}; Object.entries(prev.lmarks).forEach(([k, v]) => { lm[k] = inv[v] != null ? inv[v] : v; }); s2.lmarks = lm;
+  const keep = () => { const b = layer.querySelector('.sheet-body'), st = b ? b.scrollTop : 0; if (view.sheet === 'song') refreshSheet(); requestAnimationFrame(() => { const nb = layer.querySelector('.sheet-body'); if (nb) nb.scrollTop = st; }); };
+  saveSong(s2).then(keep);
+  lsSet('fluid.reordered', 1); uiSound('done');
+  undoToast('Ordem dos acordes salva', () => { const cur = songs.find(x => x.id === s.id); if (!cur) return; saveSong({ ...JSON.parse(JSON.stringify(cur)), chords: prev.chords, lmarks: prev.lmarks }).then(() => { if (view.sheet === 'song') refreshSheet(); }); });
+}
+const _refreshSheet2 = refreshSheet;
+refreshSheet = function(){
+  _refreshSheet2();
+  if (view.sheet !== 'song') return; const s = songs.find(x => x.id === view.song); const grid = layer.querySelector('.chords'); if (!s || !grid) return;
+  const cards = [...grid.querySelectorAll(':scope > .ccard')]; if (cards.length < 2) return;
+  cards.forEach((c, i) => { c.dataset.ci = i; c.style.animation = 'none'; });
+  const head = grid.closest('section') && grid.closest('section').querySelector('.sec-h h3');
+  if (head && !head.parentNode.querySelector('.ro-b')){ const b = document.createElement('button'); b.className = 'ro-b' + (view.reorder ? ' on' : ''); b.dataset.ro = 'toggle'; b.setAttribute('aria-pressed', String(!!view.reorder));
+    b.innerHTML = `${UXI.swap}<span>${view.reorder ? 'Pronto' : 'Ordem'}</span>`; b.setAttribute('aria-label', view.reorder ? 'Terminar de mudar a ordem' : 'Mudar a ordem dos acordes'); head.after(b); }
+  if (view.reorder){ grid.classList.add('ro-mode'); cards.forEach((c, i) => { const n = detect(s.chords[i]) || 'acorde';
+      const bar = document.createElement('div'); bar.className = 'ro-bar';
+      bar.innerHTML = `<button data-ro="-1" data-i="${i}" ${i===0?'disabled':''} aria-label="Mover ${esc(n)} para antes">${I.back}</button><button data-ro="1" data-i="${i}" ${i===cards.length-1?'disabled':''} aria-label="Mover ${esc(n)} para depois">${I.chev}</button>`; c.appendChild(bar); }); }
+  else if (!lsGet('fluid.reordered', 0) && !grid.parentNode.querySelector('.ro-tip')){ const t = document.createElement('p'); t.className = 'sw-tip ro-tip'; t.textContent = 'Dica: segure um acorde e arraste para mudar a ordem.'; grid.after(t); }
+  if (!grid.dataset.roBound){ grid.dataset.roBound = '1';
+    grid.closest('section').addEventListener('click', e => { const b = e.target.closest('[data-ro]'); if (!b) return; e.stopPropagation();
+      if (b.dataset.ro === 'toggle'){ view.reorder = !view.reorder; hap('tick'); refreshSheet(); return; }
+      const s2 = songs.find(x => x.id === view.song); if (!s2) return; const i = +b.dataset.i, j = i + (+b.dataset.ro), n = (s2.chords||[]).length; if (j < 0 || j >= n) return;
+      const order = Array.from({ length: n }, (_, k) => k); order.splice(j, 0, order.splice(i, 1)[0]); hap('tick'); chordsReorder(s2, order);
+      setTimeout(() => { const nb = layer.querySelector(`.ccard[data-ci="${j}"] [data-ro="${b.dataset.ro}"]`) || layer.querySelector(`.ccard[data-ci="${j}"] [data-ro]:not([disabled])`); nb && nb.focus(); }, 30); }); }
+};
+/* arrastar: segura 300ms, o card levanta e os outros abrem espaço */
+let rd = null;
+function rdStart(card, x, y){
+  const grid = card.parentNode, cards = [...grid.querySelectorAll(':scope > .ccard')], g = grid.getBoundingClientRect();
+  const slots = cards.map(c => { const r = c.getBoundingClientRect(); return { x: r.left - g.left, y: r.top - g.top, w: r.width, h: r.height }; });
+  rd = { card, grid, cards, slots, from: +card.dataset.ci, to: +card.dataset.ci, x0: x, y0: y, g0x: g.left, g0y: g.top, on: true, body: layer.querySelector('.sheet-body'), vy: 0 };
+  ssw = null; card.classList.add('ro-lift'); grid.classList.add('ro-dragging'); hap('hold');
+  cards.forEach(c => { if (c !== card) c.style.transition = reduceMotion() ? 'none' : 'transform 200ms cubic-bezier(.32,.72,0,1)'; });
+  rd.scrollT = (function loop(){ if (!rd) return; if (rd.vy && rd.body){ rd.body.scrollTop += rd.vy; rdMove(rd.lx, rd.ly); } return requestAnimationFrame(loop); })();
+}
+function rdMove(x, y){
+  if (!rd) return; rd.lx = x; rd.ly = y;
+  const b = rd.body && rd.body.getBoundingClientRect(); rd.vy = b ? (y < b.top + 70 ? -8 : y > b.bottom - 90 ? 8 : 0) : 0;
+  const g = rd.grid.getBoundingClientRect(), s0 = rd.slots[rd.from];
+  const px = x - g.left, py = y - g.top;
+  rd.card.style.transform = `translate(${(px - (rd.x0 - rd.g0x)).toFixed(1)}px, ${(py - (rd.y0 - rd.g0y)).toFixed(1)}px) scale(1.04)`;
+  let best = rd.to, bd = Infinity; rd.slots.forEach((sl, i) => { const d = Math.hypot(px - (sl.x + sl.w/2), py - (sl.y + sl.h/2)); if (d < bd){ bd = d; best = i; } });
+  if (best !== rd.to){ rd.to = best; hap('tick');
+    const f = rd.from, t = rd.to; rd.cards.forEach((c, i) => { if (c === rd.card) return; let ni = i; if (f < t && i > f && i <= t) ni = i - 1; if (t < f && i >= t && i < f) ni = i + 1;
+      const a = rd.slots[i], bb = rd.slots[ni]; c.style.transform = ni === i ? '' : `translate(${bb.x - a.x}px, ${bb.y - a.y}px)`; }); }
+}
+function rdEnd(cancel){
+  if (!rd) return; const r = rd; rd = null; cancelAnimationFrame(r.scrollT);
+  const s = songs.find(x => x.id === view.song), dst = r.slots[r.to], src = r.slots[r.from];
+  r.card.style.transition = reduceMotion() ? 'none' : 'transform 200ms cubic-bezier(.23,1,.32,1)';
+  r.card.style.transform = cancel || r.to === r.from ? '' : `translate(${dst.x - src.x}px, ${dst.y - src.y}px)`;
+  const done = () => { r.grid.classList.remove('ro-dragging'); r.card.classList.remove('ro-lift'); r.cards.forEach(c => { c.style.transition = ''; c.style.transform = ''; });
+    if (!cancel && s && r.to !== r.from){ const order = Array.from({ length: r.cards.length }, (_, k) => k); order.splice(r.to, 0, order.splice(r.from, 1)[0]); chordsReorder(s, order); } };
+  setTimeout(done, reduceMotion() ? 0 : 210);
+}
+function rdArm(card, x, y){
+  const t = setTimeout(() => { if (!rdPend || rdPend.card !== card) return; rdStart(card, rdPend.x, rdPend.y); rdPend = null; }, 300);
+  rdPend = { card, x, y, t };
+}
+let rdPend = null;
+const rdTarget = e => { if (view.sheet !== 'song') return null; const c = e.target.closest('.chords > .ccard'); if (!c || e.target.closest('button,a,input')) return null; return c; };
+layer.addEventListener('touchstart', e => { const c = rdTarget(e); if (!c || e.touches.length !== 1) return; rdArm(c, e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+layer.addEventListener('touchmove', e => {
+  const t = e.touches[0];
+  if (rdPend){ if (Math.hypot(t.clientX - rdPend.x, t.clientY - rdPend.y) > 8){ clearTimeout(rdPend.t); rdPend = null; } return; }
+  if (rd){ e.preventDefault(); rdMove(t.clientX, t.clientY); }
+}, { passive: false });
+layer.addEventListener('touchend', () => { if (rdPend){ clearTimeout(rdPend.t); rdPend = null; } if (rd){ swSuppress = Date.now(); rdEnd(false); } });
+layer.addEventListener('touchcancel', () => { if (rdPend){ clearTimeout(rdPend.t); rdPend = null; } if (rd) rdEnd(true); });
+layer.addEventListener('mousedown', e => { if (e.button) return; const c = rdTarget(e); if (c) rdArm(c, e.clientX, e.clientY); });
+document.addEventListener('mousemove', e => { if (rdPend){ if (Math.hypot(e.clientX - rdPend.x, e.clientY - rdPend.y) > 6){ clearTimeout(rdPend.t); rdPend = null; } return; } if (rd){ e.preventDefault(); rdMove(e.clientX, e.clientY); } });
+document.addEventListener('mouseup', () => { if (rdPend){ clearTimeout(rdPend.t); rdPend = null; } if (rd){ swSuppress = Date.now(); rdEnd(false); } });
+layer.addEventListener('contextmenu', e => { if (e.target.closest('.chords > .ccard')) e.preventDefault(); });
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && rd){ e.stopImmediatePropagation(); rdEnd(true); } }, true);
 /* ================= FIM UX ================= */
